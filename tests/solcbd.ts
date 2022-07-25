@@ -1,6 +1,9 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { Solcbd } from "../target/types/solcbd";
+
+import * as spl from "@solana/spl-token";
+
 const {
   Connection,
   TransactionInstruction,
@@ -16,13 +19,18 @@ describe("solcbd", () => {
 
   const program = anchor.workspace.Solcbd as Program<Solcbd>;
 
+  let [vaultPDA, bump_vault] = [null,null];
+  let [vaultPDA2, bump_vault2] = [null,null];
+  let randomID;
+  let newmint;
+  
+  const provider = anchor.AnchorProvider.local();
+
   it("Is initialized!", async () => {
     // Add your test here.
 
-    let randomID = anchor.web3.Keypair.generate();
-    const provider = anchor.AnchorProvider.local();
+    randomID = anchor.web3.Keypair.generate();
 
-    let 
     [vaultPDA, bump_vault] = await PublicKey.findProgramAddress(
       [
         anchor.utils.bytes.utf8.encode("project-data"),
@@ -52,4 +60,45 @@ describe("solcbd", () => {
       await console.log(dt)
       
   });
+
+  it("Make NFT", async()=>{
+
+    newmint = anchor.web3.Keypair.generate();
+
+    [vaultPDA2, bump_vault2] = await PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode("nft-data"),
+        randomID.publicKey.toBuffer(),
+        newmint.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+    let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+    const tx = await program.methods.mintCbd(
+      randomID.publicKey,
+      new anchor.BN(0)
+    ).accounts({
+      projectAccount: vaultPDA,
+      mint: newmint.publicKey,
+      derAta : def_ata,
+      dataAccount : vaultPDA2,
+      user: provider.wallet.publicKey,
+      associatedTokenProgram : spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: spl.TOKEN_PROGRAM_ID
+    }).instruction();
+
+    let tx_data = new Transaction()
+    .add(tx);
+
+    await program.provider.sendAndConfirm(tx_data, [newmint]);
+
+    let dt = await program.account.dataAccount.fetch(vaultPDA2);
+    await console.log(dt)
+
+    console.log("Balance In ATA: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+
+  });
+
 });
