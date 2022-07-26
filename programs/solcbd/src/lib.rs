@@ -8,6 +8,14 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod solcbd {
     use super::*;
 
+    pub fn initialize(ctx: Context<InitializeProgram>, _usdc : Pubkey) -> Result<()>{
+        
+        let initial_info = &mut ctx.accounts.base_account;
+        initial_info.usdc = _usdc;
+        initial_info.owner = ctx.accounts.user.to_account_info().key();
+        Ok(())
+    }
+
     pub fn initialize_project(ctx: Context<InitializeProject>, 
         _random : Pubkey, 
         _ipfs : String, 
@@ -91,6 +99,24 @@ pub enum CustomError {
 
 
 #[derive(Accounts)]
+pub struct InitializeProgram<'info> {
+
+    
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 32 + 32
+    )]
+    pub base_account: Box<Account<'info, InitAccount>>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>
+}
+
+#[derive(Accounts)]
 #[instruction(random : Pubkey)]
 pub struct InitializeProject<'info> {
 
@@ -102,6 +128,11 @@ pub struct InitializeProject<'info> {
         seeds = [b"project-data".as_ref(),random.as_ref()], bump
     )]
     pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(
+        mut
+    )]
+    pub base_account: Box<Account<'info, InitAccount>>,
 
     #[account(mut)]
     pub user: Signer<'info>,
@@ -120,6 +151,11 @@ pub struct MintCBD<'info> {
         seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
     )]
     pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(
+        mut
+    )]
+    pub base_account: Box<Account<'info, InitAccount>>,
 
     #[account(
         init,
@@ -174,3 +210,9 @@ pub struct DataAccount {
     bump : u8
 }
 
+#[account]
+#[derive(Default)]
+pub struct InitAccount {
+    usdc : Pubkey,
+    owner : Pubkey
+}
