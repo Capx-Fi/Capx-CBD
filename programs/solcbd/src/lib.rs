@@ -21,7 +21,7 @@ pub mod solcbd {
         _ipfs : String, 
         _maxsupply : u64, 
         _currentvaluation : u64, 
-        _captaltoberaised : u64, 
+        _pricepercbd : u64, 
         _numberofcbd : u64, 
         _tcbd : Vec<u64>, 
         _unlocktime: Vec<u64>, 
@@ -39,13 +39,16 @@ pub mod solcbd {
         }
         require!(sum==_numberofcbd,CustomError::SumMismatch);
 
+        let base_info = &mut ctx.accounts.base_account;
+        require!(base_info.usdc==ctx.accounts.usdcmint.to_account_info().key(),CustomError::IllegalStableCoin);
+
         let project_info = &mut ctx.accounts.project_account;
         project_info.creator = ctx.accounts.user.to_account_info().key();
         project_info.id = _random;
         project_info.detailsipfs = _ipfs;
         project_info.maxsupply = _maxsupply;
         project_info.currentvaluation = _currentvaluation;
-        project_info.captaltoberaised = _captaltoberaised;
+        project_info.pricepercbd = _pricepercbd;
         project_info.numberofcbd = _numberofcbd;
         project_info.tcbd = _tcbd;
         project_info.unlocktime = _unlocktime;
@@ -61,6 +64,21 @@ pub mod solcbd {
         
         let project_info = &mut ctx.accounts.project_account;
         let data_info = &mut ctx.accounts.data_account;
+
+        let base_info = &mut ctx.accounts.base_account;
+        require!(base_info.usdc==ctx.accounts.usdcmint.to_account_info().key(),CustomError::IllegalStableCoin);
+
+        let transfer_instruction = anchor_spl::token::Transfer {
+            from: ctx.accounts.base_ata.to_account_info(),
+            to: ctx.accounts.vault_account.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_instruction,
+        );
+
+        anchor_spl::token::transfer(cpi_ctx, project_info.pricepercbd)?;
 
         data_info.promisedreturn = project_info.promisedreturn[_type as usize];
         data_info.unlocktime = project_info.unlocktime[_type as usize];
@@ -85,8 +103,12 @@ pub mod solcbd {
 
 
 
+
+
         Ok(())
     }
+
+
 
 }
 
@@ -94,9 +116,9 @@ pub mod solcbd {
 pub enum CustomError {
     LengthMismatch,
     IllegalTimestamp,
-    SumMismatch
+    SumMismatch,
+    IllegalStableCoin
 }
-
 
 #[derive(Accounts)]
 pub struct InitializeProgram<'info> {
@@ -134,9 +156,24 @@ pub struct InitializeProject<'info> {
     )]
     pub base_account: Box<Account<'info, InitAccount>>,
 
+    #[account(
+        init_if_needed,
+        payer = user,
+        seeds = [b"project-vault".as_ref(),random.as_ref(),usdcmint.key().as_ref()],
+        bump,
+        token::mint = usdcmint,
+        token::authority = vault_account,
+    )]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub user: Signer<'info>,
 
+    #[account(mut)]
+    pub usdcmint : Account<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+    
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>
 }
@@ -168,6 +205,22 @@ pub struct MintCBD<'info> {
     #[account(init, payer = user, associated_token::mint = mint, associated_token::authority = user)]
     pub der_ata: Account<'info, TokenAccount>,
 
+    #[account(mut, constraint = base_ata.mint ==  usdcmint.key(), constraint = base_ata.owner == user.key())]
+    pub base_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        seeds = [b"project-vault".as_ref(),random.as_ref(),usdcmint.key().as_ref()],
+        bump,
+        token::mint = usdcmint,
+        token::authority = vault_account,
+    )]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub usdcmint : Account<'info, Mint>,
+
     #[account(
         init,
         payer = user,
@@ -194,7 +247,7 @@ pub struct ProjectAccount {
     detailsipfs : String,
     maxsupply : u64,
     currentvaluation : u64,
-    captaltoberaised : u64,
+    pricepercbd : u64,
     numberofcbd : u64,
     tcbd : Vec<u64>,
     unlocktime : Vec<u64>,

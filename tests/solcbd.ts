@@ -21,10 +21,12 @@ describe("solcbd", () => {
 
   let [vaultPDA, bump_vault] = [null,null];
   let [vaultPDA2, bump_vault2] = [null,null];
+  let [vaultPDA3, bump_vault3] = [null,null];
   let randomID;
   let newmint;
   let baseinit;
   let usdcmint;
+  let base_ata;
   
   const provider = anchor.AnchorProvider.local();
 
@@ -34,7 +36,7 @@ describe("solcbd", () => {
     baseinit = anchor.web3.Keypair.generate();
     usdcmint = anchor.web3.Keypair.generate();
 
-    let base_ata = await spl.getAssociatedTokenAddress(usdcmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+    base_ata = await spl.getAssociatedTokenAddress(usdcmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
 
       let create_mint_tx = new Transaction().add(
         // create mint account
@@ -95,6 +97,15 @@ describe("solcbd", () => {
       ],
       program.programId
     );
+    
+    [vaultPDA3, bump_vault3] = await PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode("project-vault"),
+        randomID.publicKey.toBuffer(),
+        usdcmint.publicKey.toBuffer()
+      ],
+      program.programId
+    );
 
     const tx = await program.methods.initializeProject(
       randomID.publicKey,
@@ -109,6 +120,9 @@ describe("solcbd", () => {
     ).accounts({
       baseAccount: baseinit.publicKey,
       projectAccount: vaultPDA,
+      vaultAccount : vaultPDA3,
+      usdcmint : usdcmint.publicKey,
+      tokenProgram : spl.TOKEN_PROGRAM_ID,
       user: provider.wallet.publicKey,
       systemProgram: anchor.web3.SystemProgram.programId
     }).rpc();
@@ -141,7 +155,10 @@ describe("solcbd", () => {
       projectAccount: vaultPDA,
       mint: newmint.publicKey,
       derAta : def_ata,
+      baseAta : base_ata,
+      vaultAccount : vaultPDA3,
       dataAccount : vaultPDA2,
+      usdcmint : usdcmint.publicKey,
       user: provider.wallet.publicKey,
       associatedTokenProgram : spl.ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
@@ -156,7 +173,11 @@ describe("solcbd", () => {
     let dt = await program.account.dataAccount.fetch(vaultPDA2);
     await console.log(dt)
 
-    console.log("Balance In ATA: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+    console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+
+    console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
+    
+    console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
 
   });
 
