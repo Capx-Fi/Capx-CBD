@@ -185,48 +185,48 @@ describe("solcbd", () => {
         await console.log(dt2)
     });
 
-    // it("Make NFT", async () => {
+    it("Make NFT", async () => {
 
-    //     newmint = anchor.web3.Keypair.generate();
+        newmint = anchor.web3.Keypair.generate();
 
         
 
-    //     let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
-    //     const tx = await program.methods.mintCbd(
-    //         randomID.publicKey,
-    //         "0"
-    //     ).accounts({
-    //         baseAccount: baseinit.publicKey,
-    //         projectAccount: vaultPDA,
-    //         mint: newmint.publicKey,
-    //         derAta: def_ata,
-    //         baseAta: base_ata,
-    //         vaultAccount: vaultPDA3,
-    //         dataAccount: vaultPDA2,
-    //         usdcmint: usdcmint.publicKey,
-    //         user: provider.wallet.publicKey,
-    //         associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    //         systemProgram: anchor.web3.SystemProgram.programId,
-    //         tokenProgram: spl.TOKEN_PROGRAM_ID
-    //     }).instruction();
+        let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+        const tx = await program.methods.mintCbd(
+            randomID.publicKey,
+            "0",
+            bump_vault3
+        ).accounts({
+            baseAccount: baseinit.publicKey,
+            projectAccount: vaultPDA,
+            mint: newmint.publicKey,
+            derAta: def_ata,
+            baseAta: base_ata,
+            vaultAccount: vaultPDA3,
+            dataAccount: vaultPDA2,
+            user: provider.wallet.publicKey,
+            associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: spl.TOKEN_PROGRAM_ID
+        }).instruction();
 
-    //     let tx_data = new Transaction()
-    //         .add(tx);
+        let tx_data = new Transaction()
+            .add(tx);
 
-    //     await program.provider.sendAndConfirm(tx_data, [newmint]);
+        await program.provider.sendAndConfirm(tx_data, [newmint]).catch(console.error);
 
-    //     let dt = await program.account.dataAccount.fetch(vaultPDA2);
-    //     await console.log(dt)
+        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        await console.log(dt)
 
-    //     console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+        console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
 
-    //     console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
+        console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
 
-    //     console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
 
-    //     let dt2 = await program.account.projectAccount.fetch(vaultPDA);
-    //     await console.log(dt2)
-    // });
+        let dt2 = await program.account.projectAccount.fetch(vaultPDA);
+        await console.log(dt2)
+    });
 
 
     // it("Initiate Redemption", async () => {

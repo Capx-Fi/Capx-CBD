@@ -87,17 +87,15 @@ pub mod solcbd {
         Ok(())
     }
 
-    pub fn mint_cbd(ctx: Context<MintCBD>, _random: Pubkey, _type: String) -> Result<()> {
+    pub fn mint_cbd(
+        ctx: Context<MintCBD>,
+        _random: Pubkey,
+        _type: String,
+        _vault_bump: u8,
+    ) -> Result<()> {
         let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
         let project_info = &mut ctx.accounts.project_account;
         let data_info = &mut ctx.accounts.data_account;
-
-        let base_info = &mut ctx.accounts.base_account;
-        require!(
-            base_info.usdc == ctx.accounts.usdcmint.to_account_info().key(),
-            CustomError::IllegalStableCoin
-        );
-
         let transfer_instruction = anchor_spl::token::Transfer {
             from: ctx.accounts.base_ata.to_account_info(),
             to: ctx.accounts.vault_account.to_account_info(),
@@ -115,9 +113,6 @@ pub mod solcbd {
             CustomError::MintsExausted
         );
         project_info.rcbd[_type_dm as usize] -= 1;
-        data_info.promisedreturn = project_info.promisedreturn[_type_dm as usize];
-        data_info.unlocktime = project_info.unlocktime[_type_dm as usize];
-        data_info.bump = *ctx.bumps.get("data_account").unwrap();
 
         let _bump = data_info.bump;
 
@@ -125,7 +120,7 @@ pub mod solcbd {
         let inner = vec![
             b"nft-data".as_ref(),
             _random.as_ref(),
-            ctx.accounts.mint.to_account_info().key.as_ref(),
+            _type.as_ref(),
             bump_vector.as_ref(),
         ];
         let outer = vec![inner.as_slice()];
@@ -231,7 +226,7 @@ pub struct InitializeProject<'info> {
     pub base_account: Box<Account<'info, InitAccount>>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = user,
         seeds = [b"project-vault".as_ref(),random.as_ref(),usdcmint.key().as_ref()],
         bump,
@@ -282,7 +277,7 @@ pub struct InitializeCBD<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(random : Pubkey,_type : String)]
+#[instruction(random : Pubkey,_type : String, _vaultbump : u8)]
 pub struct MintCBD<'info> {
     #[account(
         mut,
@@ -299,26 +294,20 @@ pub struct MintCBD<'info> {
         mint::decimals = 0,
         mint::authority = data_account,
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
 
     #[account(init, payer = user, associated_token::mint = mint, associated_token::authority = user)]
-    pub der_ata: Account<'info, TokenAccount>,
+    pub der_ata: Box<Account<'info, TokenAccount>>,
 
-    #[account(mut, constraint = base_ata.mint ==  usdcmint.key(), constraint = base_ata.owner == user.key())]
-    pub base_ata: Account<'info, TokenAccount>,
+    #[account(mut, constraint = base_ata.mint ==  base_account.usdc, constraint = base_ata.owner == user.key())]
+    pub base_ata: Box<Account<'info, TokenAccount>>,
 
     #[account(
-        init_if_needed,
-        payer = user,
-        seeds = [b"project-vault".as_ref(),random.as_ref(),usdcmint.key().as_ref()],
-        bump,
-        token::mint = usdcmint,
-        token::authority = vault_account,
+        mut,
+        seeds = [b"project-vault".as_ref(),random.as_ref(),base_account.usdc.as_ref()],
+        bump = _vaultbump
     )]
     pub vault_account: Box<Account<'info, TokenAccount>>,
-
-    #[account(mut)]
-    pub usdcmint: Account<'info, Mint>,
 
     #[account(
         mut,
