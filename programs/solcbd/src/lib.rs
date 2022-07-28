@@ -21,7 +21,7 @@ pub mod solcbd {
         _ipfs: String,
         _maxsupply: u64,
         _currentvaluation: u64,
-        _pricepercbd: u64,
+        _pricepercbd: Vec<u64>,
         _numberofcbd: u64,
         _tcbd: Vec<u64>,
         _unlocktime: Vec<u64>,
@@ -64,7 +64,31 @@ pub mod solcbd {
         Ok(())
     }
 
-    pub fn mint_cbd(ctx: Context<MintCBD>, _random: Pubkey, _type: u64) -> Result<()> {
+    pub fn initialize_cbd(
+        ctx: Context<InitializeCBD>,
+        _random: Pubkey,
+        _type: String,
+    ) -> Result<()> {
+        let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
+        let project_info = &mut ctx.accounts.project_account;
+        let data_info = &mut ctx.accounts.data_account;
+
+        let base_info = &mut ctx.accounts.base_account;
+        require!(
+            base_info.usdc == ctx.accounts.usdcmint.to_account_info().key(),
+            CustomError::IllegalStableCoin
+        );
+
+        data_info.promisedreturn = project_info.promisedreturn[_type_dm as usize];
+        data_info.unlocktime = project_info.unlocktime[_type_dm as usize];
+        data_info.price = project_info.pricepercbd[_type_dm as usize];
+        data_info.bump = *ctx.bumps.get("data_account").unwrap();
+
+        Ok(())
+    }
+
+    pub fn mint_cbd(ctx: Context<MintCBD>, _random: Pubkey, _type: String) -> Result<()> {
+        let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
         let project_info = &mut ctx.accounts.project_account;
         let data_info = &mut ctx.accounts.data_account;
 
@@ -84,15 +108,15 @@ pub mod solcbd {
             transfer_instruction,
         );
 
-        anchor_spl::token::transfer(cpi_ctx, project_info.pricepercbd)?;
+        anchor_spl::token::transfer(cpi_ctx, project_info.pricepercbd[_type_dm as usize])?;
 
         require!(
-            project_info.rcbd[_type as usize] > 0,
+            project_info.rcbd[_type_dm as usize] > 0,
             CustomError::MintsExausted
         );
-        project_info.rcbd[_type as usize] -= 1;
-        data_info.promisedreturn = project_info.promisedreturn[_type as usize];
-        data_info.unlocktime = project_info.unlocktime[_type as usize];
+        project_info.rcbd[_type_dm as usize] -= 1;
+        data_info.promisedreturn = project_info.promisedreturn[_type_dm as usize];
+        data_info.unlocktime = project_info.unlocktime[_type_dm as usize];
         data_info.bump = *ctx.bumps.get("data_account").unwrap();
 
         let _bump = data_info.bump;
@@ -198,7 +222,7 @@ pub struct InitializeProject<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 32 + 32 + (4 + 46) + 8 + 8 + 8 + 8 + (4 * (4 + (8*20))) + 1,
+        space = 8 + 32 + 32 + (4 + 46) + 8 + 8 + 8 + (5 * (4 + (8*20))) + 1,
         seeds = [b"project-data".as_ref(),random.as_ref()], bump
     )]
     pub project_account: Box<Account<'info, ProjectAccount>>,
@@ -228,7 +252,37 @@ pub struct InitializeProject<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(random : Pubkey)]
+#[instruction(random : Pubkey,_type : String)]
+pub struct InitializeCBD<'info> {
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(mut)]
+    pub base_account: Box<Account<'info, InitAccount>>,
+
+    #[account(mut)]
+    pub usdcmint: Account<'info, Mint>,
+
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 8 + 8 + 8 + 1,
+        seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump
+    )]
+    pub data_account: Box<Account<'info, DataAccount>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey,_type : String)]
 pub struct MintCBD<'info> {
     #[account(
         mut,
@@ -267,12 +321,11 @@ pub struct MintCBD<'info> {
     pub usdcmint: Account<'info, Mint>,
 
     #[account(
-        init,
-        payer = user,
-        space = 8 + 8 + 8 + 8 + 1,
-        seeds = [b"nft-data".as_ref(),random.as_ref(),mint.key().as_ref()], bump
+        mut,
+        seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump=data_account.bump
     )]
     pub data_account: Box<Account<'info, DataAccount>>,
+
     #[account(mut)]
     pub user: Signer<'info>,
 
@@ -343,8 +396,8 @@ pub struct ProjectAccount {
     detailsipfs: String,
     maxsupply: u64,
     currentvaluation: u64,
-    pricepercbd: u64,
     numberofcbd: u64,
+    pricepercbd: Vec<u64>,
     tcbd: Vec<u64>,
     rcbd: Vec<u64>,
     unlocktime: Vec<u64>,
@@ -357,6 +410,14 @@ pub struct ProjectAccount {
 pub struct DataAccount {
     unlocktime: u64,
     promisedreturn: u64,
+    price: u64,
+    bump: u8,
+}
+
+#[account]
+#[derive(Default)]
+pub struct NftAccount {
+    datatarget: Pubkey,
     bump: u8,
 }
 
