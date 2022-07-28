@@ -96,6 +96,11 @@ pub mod solcbd {
         let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
         let project_info = &mut ctx.accounts.project_account;
         let data_info = &mut ctx.accounts.data_account;
+        let nft_target = &mut ctx.accounts.nft_account;
+
+        nft_target.datatarget = data_info.to_account_info().key();
+        nft_target.bump = *ctx.bumps.get("nft_account").unwrap();
+
         let transfer_instruction = anchor_spl::token::Transfer {
             from: ctx.accounts.base_ata.to_account_info(),
             to: ctx.accounts.vault_account.to_account_info(),
@@ -314,6 +319,14 @@ pub struct MintCBD<'info> {
         seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump=data_account.bump
     )]
     pub data_account: Box<Account<'info, DataAccount>>,
+
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 32 + 1,
+        seeds = [b"nft-data-target".as_ref(),mint.key().as_ref()], bump
+    )]
+    pub nft_account: Box<Account<'info, NftAccount>>,
 
     #[account(mut)]
     pub user: Signer<'info>,

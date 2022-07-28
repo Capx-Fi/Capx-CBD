@@ -28,6 +28,7 @@ describe("solcbd", () => {
     let [vaultPDA3, bump_vault3] = [null, null];
     let [vaultPDA4, bump_vault4] = [null, null];
     let [vaultPDA5, bump_vault5] = [null, null];
+    let [nftTarget, bump_vault6] = [null, null];
     let randomID;
     let newmint;
     let baseinit;
@@ -119,8 +120,8 @@ describe("solcbd", () => {
             new anchor.BN(3000),
             new anchor.BN(4000),
             [new anchor.BN(5000)],
-            new anchor.BN(1),
-            [new anchor.BN(1)],
+            new anchor.BN(2),
+            [new anchor.BN(2)],
             [new anchor.BN(1659186531)],
             [new anchor.BN(9000)],
         ).accounts({
@@ -189,7 +190,13 @@ describe("solcbd", () => {
 
         newmint = anchor.web3.Keypair.generate();
 
-        
+        [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("nft-data-target"),
+                newmint.publicKey.toBuffer()
+            ],
+            program.programId
+        );
 
         let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
         const tx = await program.methods.mintCbd(
@@ -204,6 +211,7 @@ describe("solcbd", () => {
             baseAta: base_ata,
             vaultAccount: vaultPDA3,
             dataAccount: vaultPDA2,
+            nftAccount: nftTarget,
             user: provider.wallet.publicKey,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: anchor.web3.SystemProgram.programId,
@@ -226,6 +234,69 @@ describe("solcbd", () => {
 
         let dt2 = await program.account.projectAccount.fetch(vaultPDA);
         await console.log(dt2)
+
+        let dt3 = await program.account.nftAccount.fetch(nftTarget);
+        await console.log("NFT PDA address - ",nftTarget.toBase58())
+        await console.log("NFT PDA data - ",dt3.datatarget.toBase58())
+
+        await console.log("Target Acconut which has data and authority - ",dt3.datatarget.toBase58())
+    });
+
+
+    it("Make NFT again", async () => {
+
+        newmint = anchor.web3.Keypair.generate();
+
+        [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("nft-data-target"),
+                newmint.publicKey.toBuffer()
+            ],
+            program.programId
+        );
+
+        let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+        const tx = await program.methods.mintCbd(
+            randomID.publicKey,
+            "0",
+            bump_vault3
+        ).accounts({
+            baseAccount: baseinit.publicKey,
+            projectAccount: vaultPDA,
+            mint: newmint.publicKey,
+            derAta: def_ata,
+            baseAta: base_ata,
+            vaultAccount: vaultPDA3,
+            dataAccount: vaultPDA2,
+            nftAccount: nftTarget,
+            user: provider.wallet.publicKey,
+            associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: spl.TOKEN_PROGRAM_ID
+        }).instruction();
+
+        let tx_data = new Transaction()
+            .add(tx);
+
+        await program.provider.sendAndConfirm(tx_data, [newmint]).catch(console.error);
+
+        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        await console.log(dt)
+
+        console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+
+        console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
+
+        console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+
+        let dt2 = await program.account.projectAccount.fetch(vaultPDA);
+        await console.log(dt2)
+
+        let dt3 = await program.account.nftAccount.fetch(nftTarget);
+        await console.log("NFT PDA address - ",nftTarget.toBase58())
+        await console.log("NFT PDA data - ",dt3.datatarget.toBase58())
+
+        await console.log("Target Acconut which has data and authority - ",dt3.datatarget.toBase58())
     });
 
 
