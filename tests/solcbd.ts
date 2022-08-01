@@ -31,11 +31,13 @@ describe("solcbd", () => {
     let [nftTarget, bump_vault6] = [null, null];
     let randomID;
     let newmint;
+    let newmint2;
     let baseinit;
     let usdcmint;
     let base_ata;
     let tokenmint;
     let token_ata;
+    let def_ata;
 
     const provider = anchor.AnchorProvider.local();
 
@@ -123,7 +125,7 @@ describe("solcbd", () => {
             new anchor.BN(2),
             [new anchor.BN(2)],
             [new anchor.BN(1690849383)],
-            [new anchor.BN(9000)],
+            [new anchor.BN(900000)],
         ).accounts({
             baseAccount: baseinit.publicKey,
             projectAccount: vaultPDA,
@@ -198,7 +200,7 @@ describe("solcbd", () => {
             program.programId
         );
 
-        let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+        def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
         const tx = await program.methods.mintCbd(
             randomID.publicKey,
             "0",
@@ -245,17 +247,17 @@ describe("solcbd", () => {
 
     it("Make NFT again", async () => {
 
-        newmint = anchor.web3.Keypair.generate();
+        newmint2 = anchor.web3.Keypair.generate();
 
         [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("nft-data-target"),
-                newmint.publicKey.toBuffer()
+                newmint2.publicKey.toBuffer()
             ],
             program.programId
         );
 
-        let def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+        let def_ata = await spl.getAssociatedTokenAddress(newmint2.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
         const tx = await program.methods.mintCbd(
             randomID.publicKey,
             "0",
@@ -263,7 +265,7 @@ describe("solcbd", () => {
         ).accounts({
             baseAccount: baseinit.publicKey,
             projectAccount: vaultPDA,
-            mint: newmint.publicKey,
+            mint: newmint2.publicKey,
             derAta: def_ata,
             baseAta: base_ata,
             vaultAccount: vaultPDA3,
@@ -278,7 +280,7 @@ describe("solcbd", () => {
         let tx_data = new Transaction()
             .add(tx);
 
-        await program.provider.sendAndConfirm(tx_data, [newmint]).catch(console.error);
+        await program.provider.sendAndConfirm(tx_data, [newmint2]).catch(console.error);
 
         let dt = await program.account.dataAccount.fetch(vaultPDA2);
         await console.log(dt)
@@ -408,4 +410,54 @@ describe("solcbd", () => {
     });
 
 
-});
+    it("Redeem CBD", async () => {
+
+
+        let typeToFund = "0";
+
+        console.log("Balance In ATA for NFT before redeeam: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+
+        await console.log("Mint Key - ",newmint.publicKey.toBase58());
+        await console.log("Def_ata - ", def_ata.toBase58());
+
+        [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("nft-data-target"),
+                newmint.publicKey.toBuffer()
+            ],
+            program.programId
+        );
+
+        console.log("Balance of token ATA before redeem: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+        
+        const tx = await program.methods.redeemCbd(randomID.publicKey,typeToFund, bump_vault5).accounts({
+            mint : newmint.publicKey,
+            derAta : def_ata,
+            baseAccount: baseinit.publicKey,
+            projectAccount : vaultPDA,
+            dataAccount: vaultPDA2,
+            nftAccount: nftTarget,
+            redemptionAccount: vaultPDA4,
+            redemptionVault: vaultPDA5,
+            tokenAta: token_ata,
+            poolusdc: base_ata,
+            pooltoken: token_ata,
+            user: provider.wallet.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: spl.TOKEN_PROGRAM_ID
+            
+        }).instruction();
+        
+        const transaction = new Transaction().add(
+            spl.createApproveInstruction(def_ata,vaultPDA2,provider.wallet.publicKey,BigInt(1),[],spl.TOKEN_PROGRAM_ID)
+            ).add(tx);
+            
+            await program.provider.sendAndConfirm(transaction, []);
+            
+            console.log("Balance In ATA for NFT after redeeam: ", await program.provider.connection.getTokenAccountBalance(def_ata));
+            
+            console.log("Balance of token ATA after redeem: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+        });
+        
+        
+    });

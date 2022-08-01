@@ -206,6 +206,80 @@ pub mod solcbd {
 
         Ok(())
     }
+
+    pub fn redeem_cbd(
+        ctx: Context<RedeemCBD>,
+        _random: Pubkey,
+        _type: String,
+        _vault_bump: u8,
+    ) -> Result<()> {
+        let project_info = &mut ctx.accounts.project_account;
+        let redemption_info = &mut ctx.accounts.redemption_account;
+        let data_info = &mut ctx.accounts.data_account;
+        let der_ata = &mut ctx.accounts.der_ata;
+        let nft_mint = &mut ctx.accounts.mint;
+        let user = &mut ctx.accounts.user;
+
+
+        let now_ts = Clock::get().unwrap().unix_timestamp as u64;
+
+        let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
+
+        let len_of_cbd = project_info.tcbd.len();
+
+        require!(
+            (_type_dm as usize) < len_of_cbd,
+            CustomError::IndexDoesNotExist
+        );
+
+        // Activate in Prod
+        // require!(now_ts > data_info.unlocktime, CustomError::NotYetEligible);
+
+
+        let _bump = data_info.bump;
+
+        let bump_vector = _bump.to_le_bytes();
+        let inner = vec![b"nft-data".as_ref(), _random.as_ref(),_type.as_ref(),bump_vector.as_ref()];
+        let outer = vec![inner.as_slice()];
+
+        let cpi_accounts = Burn {
+            mint: ctx.accounts.mint.to_account_info(),
+            from: ctx.accounts.der_ata.to_account_info(),
+            authority: data_info.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx_burn = CpiContext::new_with_signer(cpi_program, cpi_accounts
+            , outer.as_slice());
+        
+        token::burn(cpi_ctx_burn, 1)?;
+
+        let promisedreturn = data_info.promisedreturn;
+        let price = data_info.price;
+        let roi = (price * promisedreturn) / 10000;
+
+        let usdc_bal = ctx.accounts.poolusdc.amount;
+        let token_bal = ctx.accounts.pooltoken.amount;
+
+        let token_amt = (token_bal * roi) / usdc_bal;
+
+        let transfer_instruction = anchor_spl::token::Transfer {
+            from: ctx.accounts.redemption_vault.to_account_info(),
+            to: ctx.accounts.token_ata.to_account_info(),
+            authority: ctx.accounts.redemption_vault.to_account_info(),
+        };
+
+        let bump_vector_trans = _vault_bump.to_le_bytes();
+        let inner_trans = vec![b"redemption-vault".as_ref(),_random.as_ref(),_type.as_ref(), bump_vector_trans.as_ref()];
+        let outer_trans = vec![inner_trans.as_slice()];
+        let cpi_ctx_trans = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_instruction,
+            outer_trans.as_slice(),
+        );
+        anchor_spl::token::transfer(cpi_ctx_trans, token_amt)?;
+
+        Ok(())
+    }
 }
 
 #[error_code]
@@ -217,6 +291,7 @@ pub enum CustomError {
     MintsExausted,
     CreatorMismatch,
     IndexDoesNotExist,
+    NotYetEligible,
 }
 
 #[derive(Accounts)]
@@ -437,6 +512,69 @@ pub struct FundVaults<'info> {
 
     #[account(mut, constraint = token_ata.mint ==  project_token.key(), constraint = token_ata.owner == user.key())]
     pub token_ata: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey, _type : String, _vault_bump: u8)]
+pub struct RedeemCBD<'info> {
+    #[account(mut)]
+    pub mint: Box<Account<'info, Mint>>,
+
+    #[account(mut, constraint = der_ata.mint == mint.key() ,constraint = der_ata.owner == user.key())]
+    pub der_ata: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub base_account: Box<Account<'info, InitAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"nft-data-target".as_ref(),mint.key().as_ref()], bump=nft_account.bump
+    )]
+    pub nft_account: Box<Account<'info, NftAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump=data_account.bump,
+        constraint = data_account.key() == nft_account.datatarget
+    )]
+    pub data_account: Box<Account<'info, DataAccount>>,
+
+    #[account(mut, constraint = token_ata.mint ==  redemption_account.token.key(), constraint = token_ata.owner == user.key())]
+    pub token_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = redemption_account.pooltoken == pooltoken.key(),
+        constraint = redemption_account.poolusdc == poolusdc.key(),
+        seeds = [b"redemption-data".as_ref(),random.as_ref()], bump=redemption_account.bump
+    )]
+    pub redemption_account: Box<Account<'info, RedemptionAccount>>,
+
+    #[account(
+        mut, 
+        seeds = [b"redemption-vault".as_ref(),random.as_ref(),_type.as_ref()],
+        bump=_vault_bump
+    )]
+    pub redemption_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut, constraint = poolusdc.mint ==  base_account.usdc)]
+    pub poolusdc: Account<'info, TokenAccount>,
+
+    #[account(mut, constraint = pooltoken.mint ==  redemption_account.token)]
+    pub pooltoken: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub user: Signer<'info>,
