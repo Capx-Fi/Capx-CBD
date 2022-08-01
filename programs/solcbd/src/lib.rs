@@ -145,16 +145,9 @@ pub mod solcbd {
     pub fn initialize_redemption(
         ctx: Context<InitializeRedemption>,
         _random: Pubkey,
-        _amount: u64,
     ) -> Result<()> {
         let project_info = &mut ctx.accounts.project_account;
         let redemption_info = &mut ctx.accounts.redemption_account;
-        let base_info = &mut ctx.accounts.base_account;
-        require!(
-            base_info.usdc == ctx.accounts.usdcmint.to_account_info().key(),
-            CustomError::IllegalStableCoin
-        );
-
         require!(
             ctx.accounts.user.to_account_info().key() == project_info.creator,
             CustomError::CreatorMismatch
@@ -173,6 +166,31 @@ pub mod solcbd {
 
         // let price_per_token =
         //     (usdc_bal * (base10.pow(ctx.accounts.usdcmint.decimals as u32))) / token_bal;
+
+        Ok(())
+    }
+
+    pub fn fund_vault(
+        ctx: Context<FundVaults>,
+        _random: Pubkey,
+        _type: String,
+        _amount: u64,
+    ) -> Result<()> {
+        let project_info = &mut ctx.accounts.project_account;
+        let redemption_info = &mut ctx.accounts.redemption_account;
+        require!(
+            ctx.accounts.user.to_account_info().key() == project_info.creator,
+            CustomError::CreatorMismatch
+        );
+
+        let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
+
+        let len_of_cbd = project_info.tcbd.len();
+
+        require!(
+            (_type_dm as usize) < len_of_cbd,
+            CustomError::IndexDoesNotExist
+        );
 
         let transfer_instruction = anchor_spl::token::Transfer {
             from: ctx.accounts.token_ata.to_account_info(),
@@ -198,6 +216,7 @@ pub enum CustomError {
     IllegalStableCoin,
     MintsExausted,
     CreatorMismatch,
+    IndexDoesNotExist,
 }
 
 #[derive(Accounts)]
@@ -357,30 +376,67 @@ pub struct InitializeRedemption<'info> {
     )]
     pub redemption_account: Box<Account<'info, RedemptionAccount>>,
 
+    // #[account(
+    //     init_if_needed,
+    //     payer = user,
+    //     seeds = [b"redemption-vault".as_ref(),random.as_ref(),project_token.key().as_ref()],
+    //     bump,
+    //     token::mint = project_token,
+    //     token::authority = redemption_vault,
+    // )]
+    // pub redemption_vault: Box<Account<'info, TokenAccount>>,
+    // #[account(mut, constraint = token_ata.mint ==  project_token.key(), constraint = token_ata.owner == user.key())]
+    // pub token_ata: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub project_token: Account<'info, Mint>,
+
+    #[account(mut, constraint = poolusdc.mint ==  base_account.usdc)]
+    pub poolusdc: Account<'info, TokenAccount>,
+
+    #[account(mut, constraint = pooltoken.mint ==  project_token.key())]
+    pub pooltoken: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey, _type : String)]
+pub struct FundVaults<'info> {
+    #[account(mut)]
+    pub base_account: Box<Account<'info, InitAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"redemption-data".as_ref(),random.as_ref()], bump=redemption_account.bump
+    )]
+    pub redemption_account: Box<Account<'info, RedemptionAccount>>,
+
     #[account(
         init_if_needed,
         payer = user,
-        seeds = [b"redemption-vault".as_ref(),random.as_ref(),project_token.key().as_ref()],
+        seeds = [b"redemption-vault".as_ref(),random.as_ref(),_type.as_ref()],
         bump,
         token::mint = project_token,
         token::authority = redemption_vault,
     )]
     pub redemption_vault: Box<Account<'info, TokenAccount>>,
 
-    #[account(mut, constraint = token_ata.mint ==  project_token.key(), constraint = token_ata.owner == user.key())]
-    pub token_ata: Account<'info, TokenAccount>,
-
-    #[account(mut)]
+    #[account(mut, constraint = project_token.key() == redemption_account.token)]
     pub project_token: Account<'info, Mint>,
 
-    #[account(mut)]
-    pub usdcmint: Account<'info, Mint>,
-
-    #[account(mut, constraint = poolusdc.mint ==  usdcmint.key())]
-    pub poolusdc: Account<'info, TokenAccount>,
-
-    #[account(mut, constraint = pooltoken.mint ==  project_token.key())]
-    pub pooltoken: Account<'info, TokenAccount>,
+    #[account(mut, constraint = token_ata.mint ==  project_token.key(), constraint = token_ata.owner == user.key())]
+    pub token_ata: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub user: Signer<'info>,

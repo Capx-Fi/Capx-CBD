@@ -122,7 +122,7 @@ describe("solcbd", () => {
             [new anchor.BN(5000)],
             new anchor.BN(2),
             [new anchor.BN(2)],
-            [new anchor.BN(1659186531)],
+            [new anchor.BN(1690849383)],
             [new anchor.BN(9000)],
         ).accounts({
             baseAccount: baseinit.publicKey,
@@ -300,80 +300,112 @@ describe("solcbd", () => {
     });
 
 
-    // it("Initiate Redemption", async () => {
+    it("Initiate Redemption", async () => {
 
-    //     tokenmint = anchor.web3.Keypair.generate();
+        tokenmint = anchor.web3.Keypair.generate();
 
-    //     token_ata = await spl.getAssociatedTokenAddress(tokenmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
+        token_ata = await spl.getAssociatedTokenAddress(tokenmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
 
-    //     let create_mint_tx = new Transaction().add(
-    //             // create mint account
-    //             SystemProgram.createAccount({
-    //                 fromPubkey: provider.wallet.publicKey,
-    //                 newAccountPubkey: tokenmint.publicKey,
-    //                 space: spl.MintLayout.span,
-    //                 lamports: await spl.getMinimumBalanceForRentExemptMint(program.provider.connection),
-    //                 programId: spl.TOKEN_PROGRAM_ID,
-    //             }),
-    //             // init mint account
-    //             spl.createInitializeMintInstruction(tokenmint.publicKey, 9, provider.wallet.publicKey, provider.wallet.publicKey, spl.TOKEN_PROGRAM_ID)
-    //         )
-    //         .add(
-    //             spl.createAssociatedTokenAccountInstruction(
-    //                 provider.wallet.publicKey, token_ata, provider.wallet.publicKey, tokenmint.publicKey, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    //             )
-    //         ).add(
-    //             spl.createMintToInstruction( // always TOKEN_PROGRAM_ID
-    //                 tokenmint.publicKey, // mint
-    //                 token_ata, // receiver (sholud be a token account)
-    //                 provider.wallet.publicKey, // mint authority
-    //                 7e16,
-    //                 [], // only multisig account will use. leave it empty now.
-    //                 spl.TOKEN_PROGRAM_ID, // amount. if your decimals is 8, you mint 10^8 for 1 token.
-    //             ));
+        let create_mint_tx = new Transaction().add(
+                // create mint account
+                SystemProgram.createAccount({
+                    fromPubkey: provider.wallet.publicKey,
+                    newAccountPubkey: tokenmint.publicKey,
+                    space: spl.MintLayout.span,
+                    lamports: await spl.getMinimumBalanceForRentExemptMint(program.provider.connection),
+                    programId: spl.TOKEN_PROGRAM_ID,
+                }),
+                // init mint account
+                spl.createInitializeMintInstruction(tokenmint.publicKey, 9, provider.wallet.publicKey, provider.wallet.publicKey, spl.TOKEN_PROGRAM_ID)
+            )
+            .add(
+                spl.createAssociatedTokenAccountInstruction(
+                    provider.wallet.publicKey, token_ata, provider.wallet.publicKey, tokenmint.publicKey, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID
+                )
+            ).add(
+                spl.createMintToInstruction( // always TOKEN_PROGRAM_ID
+                    tokenmint.publicKey, // mint
+                    token_ata, // receiver (sholud be a token account)
+                    provider.wallet.publicKey, // mint authority
+                    7e16,
+                    [], // only multisig account will use. leave it empty now.
+                    spl.TOKEN_PROGRAM_ID, // amount. if your decimals is 8, you mint 10^8 for 1 token.
+                ));
 
-    //     await program.provider.sendAndConfirm(create_mint_tx, [tokenmint]);
+        await program.provider.sendAndConfirm(create_mint_tx, [tokenmint]);
 
-    //     [vaultPDA4, bump_vault4] = await PublicKey.findProgramAddress(
-    //         [
-    //             anchor.utils.bytes.utf8.encode("redemption-data"),
-    //             randomID.publicKey.toBuffer()
-    //         ],
-    //         program.programId
-    //     );
+        [vaultPDA4, bump_vault4] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("redemption-data"),
+                randomID.publicKey.toBuffer()
+            ],
+            program.programId
+        );
 
-    //     [vaultPDA5, bump_vault5] = await PublicKey.findProgramAddress(
-    //         [
-    //             anchor.utils.bytes.utf8.encode("redemption-vault"),
-    //             randomID.publicKey.toBuffer(),
-    //             tokenmint.publicKey.toBuffer()
-    //         ],
-    //         program.programId
-    //     );
+        
 
-    //     console.log("Balance In ATA of token mint: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+        console.log("Balance In ATA of token mint: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+        await console.log("Token ATA - ",token_ata.toBase58())
 
 
-    //     const tx = await program.methods.initializeRedemption(randomID.publicKey, new anchor.BN(1000000)).accounts({
-    //         baseAccount: baseinit.publicKey,
-    //         projectAccount: vaultPDA,
-    //         redemptionAccount: vaultPDA4,
-    //         redemptionVault: vaultPDA5,
-    //         tokenAta: token_ata,
-    //         projectToken: tokenmint.publicKey,
-    //         usdcmint: usdcmint.publicKey,
-    //         poolusdc: base_ata,
-    //         pooltoken: token_ata,
-    //         user: provider.wallet.publicKey,
-    //         systemProgram: anchor.web3.SystemProgram.programId,
-    //         tokenProgram: spl.TOKEN_PROGRAM_ID
+        const tx = await program.methods.initializeRedemption(randomID.publicKey).accounts({
+            baseAccount: baseinit.publicKey,
+            projectAccount: vaultPDA,
+            redemptionAccount: vaultPDA4,
+            // redemptionVault: vaultPDA5,
+            // tokenAta: token_ata,
+            projectToken: tokenmint.publicKey,
+            poolusdc: base_ata,
+            pooltoken: token_ata,
+            user: provider.wallet.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: spl.TOKEN_PROGRAM_ID
 
-    //     }).rpc();
+        }).rpc();
 
-    //     console.log("Balance In ATA of token mint: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+        let dt2 = await program.account.redemptionAccount.fetch(vaultPDA4);
+        await console.log("Creator - ",dt2.creator.toBase58())
+        await console.log("ID - ",dt2.id.toBase58())
+        await console.log("Token - ",dt2.token.toBase58())
+        await console.log("PoolUSDC - ",dt2.poolusdc.toBase58())
+        await console.log("PoolToken - ",dt2.pooltoken.toBase58())
 
 
+    })
 
-    // })
+
+    it("Fund a redemption type", async () => {
+
+        console.log("Balance In ATA before Funding: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+
+        let typeToFund = "0";
+
+        [vaultPDA5, bump_vault5] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("redemption-vault"),
+                randomID.publicKey.toBuffer(),
+                anchor.utils.bytes.utf8.encode(typeToFund)
+            ],
+            program.programId
+        );
+
+        const tx = await program.methods.fundVault(randomID.publicKey,typeToFund,new anchor.BN(300000000000000)).accounts({
+            baseAccount: baseinit.publicKey,
+            projectAccount : vaultPDA,
+            redemptionAccount : vaultPDA4,
+            redemptionVault : vaultPDA5,
+            projectToken : tokenmint.publicKey,
+            tokenAta : token_ata,
+            user : provider.wallet.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: spl.TOKEN_PROGRAM_ID
+        }).rpc();
+
+        console.log("Balance In ATA before Funding: ", await program.provider.connection.getTokenAccountBalance(token_ata));
+        
+        console.log("Balance Of redemption vault: ", await program.provider.connection.getTokenAccountBalance(vaultPDA5));
+
+    });
+
 
 });
