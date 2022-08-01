@@ -280,6 +280,31 @@ pub mod solcbd {
 
         Ok(())
     }
+
+    pub fn withdraw_fund(ctx: Context<WithdrawFund>, _random: Pubkey,_vault_bump : u8, _amount : u64) -> Result<()> {
+        
+        let initial_info = &mut ctx.accounts.base_account;
+
+        let transfer_instruction = anchor_spl::token::Transfer {
+            from: ctx.accounts.vault_account.to_account_info(),
+            to: ctx.accounts.base_ata.to_account_info(),
+            authority: ctx.accounts.vault_account.to_account_info(),
+        };
+
+
+        let bump_vector_trans = _vault_bump.to_le_bytes();
+        let inner_trans = vec![b"project-vault".as_ref(),_random.as_ref(),initial_info.usdc.as_ref(), bump_vector_trans.as_ref()];
+        let outer_trans = vec![inner_trans.as_slice()];
+        let cpi_ctx_trans = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_instruction,
+            outer_trans.as_slice(),
+        );
+        anchor_spl::token::transfer(cpi_ctx_trans, _amount)?;
+
+        
+        Ok(())
+    }
 }
 
 #[error_code]
@@ -583,6 +608,40 @@ pub struct RedeemCBD<'info> {
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey, _vault_bump: u8)]
+pub struct WithdrawFund<'info> {
+
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump,
+        constraint = project_account.creator == user.key()
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(mut)]
+    pub base_account: Box<Account<'info, InitAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"project-vault".as_ref(),random.as_ref(),base_account.usdc.as_ref()],
+        bump=_vault_bump,
+    )]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut, constraint = base_ata.mint ==  base_account.usdc, constraint = base_ata.owner == user.key())]
+    pub base_ata: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+
+}
+
 
 #[account]
 #[derive(Default)]

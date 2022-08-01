@@ -457,7 +457,30 @@ describe("solcbd", () => {
             console.log("Balance In ATA for NFT after redeeam: ", await program.provider.connection.getTokenAccountBalance(def_ata));
             
             console.log("Balance of token ATA after redeem: ", await program.provider.connection.getTokenAccountBalance(token_ata));
-        });
-        
-        
     });
+        
+    
+    it("Withdraw Project Funds", async () => {
+
+        console.log("Balance of USDC ATA before withdraw: ", await program.provider.connection.getTokenAccountBalance(base_ata));
+        
+        console.log("Balance of USDC Vault before withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        
+        const tx = await program.methods.withdrawFund(randomID.publicKey,bump_vault3,new anchor.BN(7427)).accounts({
+            projectAccount: vaultPDA,
+            baseAccount : baseinit.publicKey,
+            vaultAccount : vaultPDA3,
+            baseAta : base_ata,
+            user: provider.wallet.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: spl.TOKEN_PROGRAM_ID
+        }).rpc();
+        
+        
+        console.log("Balance of USDC ATA after withdraw: ", await program.provider.connection.getTokenAccountBalance(base_ata));
+        
+        console.log("Balance of USDC Vault after withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+    });
+
+
+});
