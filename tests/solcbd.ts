@@ -483,4 +483,26 @@ describe("solcbd", () => {
     });
 
 
+    it("Edit Unlock Time for TAG", async () => {
+
+        let typeToFund = "0";
+
+        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        await console.log(dt);
+        await console.log(dt.unlocktime.toString(10));
+
+        const tx = await program.methods.editReleaseTime(randomID.publicKey,typeToFund,new anchor.BN(1698820339)).accounts({
+            projectAccount: vaultPDA,
+            dataAccount:vaultPDA2,
+            user: provider.wallet.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+        }).rpc();
+
+        dt = await program.account.dataAccount.fetch(vaultPDA2);
+        await console.log(dt);
+        await console.log(dt.unlocktime.toString(10));
+
+    });
+
+
 });

@@ -305,6 +305,14 @@ pub mod solcbd {
         
         Ok(())
     }
+
+    pub fn edit_release_time(ctx: Context<EditReleaseTime>, _random: Pubkey, _type: String, _new_time : u64) -> Result<()>{
+        
+        let data_info = &mut ctx.accounts.data_account;
+        data_info.unlocktime = _new_time;
+
+        Ok(())
+    }
 }
 
 #[error_code]
@@ -476,17 +484,6 @@ pub struct InitializeRedemption<'info> {
     )]
     pub redemption_account: Box<Account<'info, RedemptionAccount>>,
 
-    // #[account(
-    //     init_if_needed,
-    //     payer = user,
-    //     seeds = [b"redemption-vault".as_ref(),random.as_ref(),project_token.key().as_ref()],
-    //     bump,
-    //     token::mint = project_token,
-    //     token::authority = redemption_vault,
-    // )]
-    // pub redemption_vault: Box<Account<'info, TokenAccount>>,
-    // #[account(mut, constraint = token_ata.mint ==  project_token.key(), constraint = token_ata.owner == user.key())]
-    // pub token_ata: Account<'info, TokenAccount>,
     #[account(mut)]
     pub project_token: Account<'info, Mint>,
 
@@ -637,6 +634,32 @@ pub struct WithdrawFund<'info> {
     pub user: Signer<'info>,
 
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+
+}
+
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey, _type: String)]
+pub struct EditReleaseTime<'info> {
+
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump,
+        constraint = project_account.creator == user.key()
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump=data_account.bump
+    )]
+    pub data_account: Box<Account<'info, DataAccount>>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 
