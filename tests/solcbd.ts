@@ -23,12 +23,12 @@ describe("solcbd", () => {
 
     const program = anchor.workspace.Solcbd as Program < Solcbd > ;
 
-    let [vaultPDA, bump_vault] = [null, null];
-    let [vaultPDA2, bump_vault2] = [null, null];
-    let [vaultPDA3, bump_vault3] = [null, null];
-    let [vaultPDA4, bump_vault4] = [null, null];
-    let [vaultPDA5, bump_vault5] = [null, null];
-    let [nftTarget, bump_vault6] = [null, null];
+    let [projectAccountPDA, projectAccountPDA_bump] = [null, null];
+    let [dataAccountPDA, dataAccountPDA_bump] = [null, null];
+    let [vaultAccountPDA, vaultAccountPDA_bump] = [null, null];
+    let [redemptionAccountPDA, redemptionAccountPDA_bump] = [null, null];
+    let [redemptionVaultPDA, redemptionVaultPDA_bump] = [null, null];
+    let [nftTarget, nftTarget_bump] = [null, null];
     let randomID;
     let newmint;
     let newmint2;
@@ -99,7 +99,7 @@ describe("solcbd", () => {
 
         randomID = anchor.web3.Keypair.generate();
 
-        [vaultPDA, bump_vault] = await PublicKey.findProgramAddress(
+        [projectAccountPDA, projectAccountPDA_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("project-data"),
                 randomID.publicKey.toBuffer()
@@ -107,7 +107,7 @@ describe("solcbd", () => {
             program.programId
         );
 
-        [vaultPDA3, bump_vault3] = await PublicKey.findProgramAddress(
+        [vaultAccountPDA, vaultAccountPDA_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("project-vault"),
                 randomID.publicKey.toBuffer(),
@@ -128,8 +128,8 @@ describe("solcbd", () => {
             [new anchor.BN(900000)],
         ).accounts({
             baseAccount: baseinit.publicKey,
-            projectAccount: vaultPDA,
-            vaultAccount: vaultPDA3,
+            projectAccount: projectAccountPDA,
+            vaultAccount: vaultAccountPDA,
             usdcmint: usdcmint.publicKey,
             tokenProgram: spl.TOKEN_PROGRAM_ID,
             user: provider.wallet.publicKey,
@@ -137,7 +137,7 @@ describe("solcbd", () => {
         }).rpc();
         // console.log("Your transaction signature", tx);
 
-        let dt = await program.account.projectAccount.fetch(vaultPDA);
+        let dt = await program.account.projectAccount.fetch(projectAccountPDA);
         await console.log(dt)
 
     });
@@ -148,7 +148,7 @@ describe("solcbd", () => {
 
         let type = "0"; 
 
-        [vaultPDA2, bump_vault2] = await PublicKey.findProgramAddress(
+        [dataAccountPDA, dataAccountPDA_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("nft-data"),
                 randomID.publicKey.toBuffer(),
@@ -162,8 +162,8 @@ describe("solcbd", () => {
             type
         ).accounts({
             baseAccount: baseinit.publicKey,
-            projectAccount: vaultPDA,
-            dataAccount: vaultPDA2,
+            projectAccount: projectAccountPDA,
+            dataAccount: dataAccountPDA,
             usdcmint: usdcmint.publicKey,
             user: provider.wallet.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
@@ -175,16 +175,16 @@ describe("solcbd", () => {
 
         await program.provider.sendAndConfirm(tx_data, []);
 
-        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        let dt = await program.account.dataAccount.fetch(dataAccountPDA);
         await console.log(dt)
 
         // console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
 
         // console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
 
-        // console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        // console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultAccountPDA));
 
-        let dt2 = await program.account.projectAccount.fetch(vaultPDA);
+        let dt2 = await program.account.projectAccount.fetch(projectAccountPDA);
         await console.log(dt2)
     });
 
@@ -192,7 +192,7 @@ describe("solcbd", () => {
 
         newmint = anchor.web3.Keypair.generate();
 
-        [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
+        [nftTarget, nftTarget_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("nft-data-target"),
                 newmint.publicKey.toBuffer()
@@ -204,15 +204,15 @@ describe("solcbd", () => {
         const tx = await program.methods.mintCbd(
             randomID.publicKey,
             "0",
-            bump_vault3
+            vaultAccountPDA_bump
         ).accounts({
             baseAccount: baseinit.publicKey,
-            projectAccount: vaultPDA,
+            projectAccount: projectAccountPDA,
             mint: newmint.publicKey,
             derAta: def_ata,
             baseAta: base_ata,
-            vaultAccount: vaultPDA3,
-            dataAccount: vaultPDA2,
+            vaultAccount: vaultAccountPDA,
+            dataAccount: dataAccountPDA,
             nftAccount: nftTarget,
             user: provider.wallet.publicKey,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -225,16 +225,16 @@ describe("solcbd", () => {
 
         await program.provider.sendAndConfirm(tx_data, [newmint]).catch(console.error);
 
-        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        let dt = await program.account.dataAccount.fetch(dataAccountPDA);
         await console.log(dt)
 
         console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
 
         console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
 
-        console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultAccountPDA));
 
-        let dt2 = await program.account.projectAccount.fetch(vaultPDA);
+        let dt2 = await program.account.projectAccount.fetch(projectAccountPDA);
         await console.log(dt2)
 
         let dt3 = await program.account.nftAccount.fetch(nftTarget);
@@ -249,7 +249,7 @@ describe("solcbd", () => {
 
         newmint2 = anchor.web3.Keypair.generate();
 
-        [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
+        [nftTarget, nftTarget_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("nft-data-target"),
                 newmint2.publicKey.toBuffer()
@@ -261,15 +261,15 @@ describe("solcbd", () => {
         const tx = await program.methods.mintCbd(
             randomID.publicKey,
             "0",
-            bump_vault3
+            vaultAccountPDA_bump
         ).accounts({
             baseAccount: baseinit.publicKey,
-            projectAccount: vaultPDA,
+            projectAccount: projectAccountPDA,
             mint: newmint2.publicKey,
             derAta: def_ata,
             baseAta: base_ata,
-            vaultAccount: vaultPDA3,
-            dataAccount: vaultPDA2,
+            vaultAccount: vaultAccountPDA,
+            dataAccount: dataAccountPDA,
             nftAccount: nftTarget,
             user: provider.wallet.publicKey,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -282,16 +282,16 @@ describe("solcbd", () => {
 
         await program.provider.sendAndConfirm(tx_data, [newmint2]).catch(console.error);
 
-        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        let dt = await program.account.dataAccount.fetch(dataAccountPDA);
         await console.log(dt)
 
         console.log("Balance In ATA for NFT: ", await program.provider.connection.getTokenAccountBalance(def_ata));
 
         console.log("Balance In ATA of USDC mint: ", await program.provider.connection.getTokenAccountBalance(base_ata));
 
-        console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        console.log("Balance In PDA vault of project: ", await program.provider.connection.getTokenAccountBalance(vaultAccountPDA));
 
-        let dt2 = await program.account.projectAccount.fetch(vaultPDA);
+        let dt2 = await program.account.projectAccount.fetch(projectAccountPDA);
         await console.log(dt2)
 
         let dt3 = await program.account.nftAccount.fetch(nftTarget);
@@ -336,7 +336,7 @@ describe("solcbd", () => {
 
         await program.provider.sendAndConfirm(create_mint_tx, [tokenmint]);
 
-        [vaultPDA4, bump_vault4] = await PublicKey.findProgramAddress(
+        [redemptionAccountPDA, redemptionAccountPDA_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("redemption-data"),
                 randomID.publicKey.toBuffer()
@@ -352,9 +352,9 @@ describe("solcbd", () => {
 
         const tx = await program.methods.initializeRedemption(randomID.publicKey).accounts({
             baseAccount: baseinit.publicKey,
-            projectAccount: vaultPDA,
-            redemptionAccount: vaultPDA4,
-            // redemptionVault: vaultPDA5,
+            projectAccount: projectAccountPDA,
+            redemptionAccount: redemptionAccountPDA,
+            // redemptionVault: redemptionVaultPDA,
             // tokenAta: token_ata,
             projectToken: tokenmint.publicKey,
             poolusdc: base_ata,
@@ -365,7 +365,7 @@ describe("solcbd", () => {
 
         }).rpc();
 
-        let dt2 = await program.account.redemptionAccount.fetch(vaultPDA4);
+        let dt2 = await program.account.redemptionAccount.fetch(redemptionAccountPDA);
         await console.log("Creator - ",dt2.creator.toBase58())
         await console.log("ID - ",dt2.id.toBase58())
         await console.log("Token - ",dt2.token.toBase58())
@@ -382,7 +382,7 @@ describe("solcbd", () => {
 
         let typeToFund = "0";
 
-        [vaultPDA5, bump_vault5] = await PublicKey.findProgramAddress(
+        [redemptionVaultPDA, redemptionVaultPDA_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("redemption-vault"),
                 randomID.publicKey.toBuffer(),
@@ -393,9 +393,9 @@ describe("solcbd", () => {
 
         const tx = await program.methods.fundVault(randomID.publicKey,typeToFund,new anchor.BN(300000000000000)).accounts({
             baseAccount: baseinit.publicKey,
-            projectAccount : vaultPDA,
-            redemptionAccount : vaultPDA4,
-            redemptionVault : vaultPDA5,
+            projectAccount : projectAccountPDA,
+            redemptionAccount : redemptionAccountPDA,
+            redemptionVault : redemptionVaultPDA,
             projectToken : tokenmint.publicKey,
             tokenAta : token_ata,
             user : provider.wallet.publicKey,
@@ -405,7 +405,7 @@ describe("solcbd", () => {
 
         console.log("Balance In ATA before Funding: ", await program.provider.connection.getTokenAccountBalance(token_ata));
         
-        console.log("Balance Of redemption vault: ", await program.provider.connection.getTokenAccountBalance(vaultPDA5));
+        console.log("Balance Of redemption vault: ", await program.provider.connection.getTokenAccountBalance(redemptionVaultPDA));
 
     });
 
@@ -420,7 +420,7 @@ describe("solcbd", () => {
         await console.log("Mint Key - ",newmint.publicKey.toBase58());
         await console.log("Def_ata - ", def_ata.toBase58());
 
-        [nftTarget, bump_vault6] = await PublicKey.findProgramAddress(
+        [nftTarget, nftTarget_bump] = await PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("nft-data-target"),
                 newmint.publicKey.toBuffer()
@@ -430,15 +430,15 @@ describe("solcbd", () => {
 
         console.log("Balance of token ATA before redeem: ", await program.provider.connection.getTokenAccountBalance(token_ata));
         
-        const tx = await program.methods.redeemCbd(randomID.publicKey,typeToFund, bump_vault5).accounts({
+        const tx = await program.methods.redeemCbd(randomID.publicKey,typeToFund, redemptionVaultPDA_bump).accounts({
             mint : newmint.publicKey,
             derAta : def_ata,
             baseAccount: baseinit.publicKey,
-            projectAccount : vaultPDA,
-            dataAccount: vaultPDA2,
+            projectAccount : projectAccountPDA,
+            dataAccount: dataAccountPDA,
             nftAccount: nftTarget,
-            redemptionAccount: vaultPDA4,
-            redemptionVault: vaultPDA5,
+            redemptionAccount: redemptionAccountPDA,
+            redemptionVault: redemptionVaultPDA,
             tokenAta: token_ata,
             poolusdc: base_ata,
             pooltoken: token_ata,
@@ -449,7 +449,7 @@ describe("solcbd", () => {
         }).instruction();
         
         const transaction = new Transaction().add(
-            spl.createApproveInstruction(def_ata,vaultPDA2,provider.wallet.publicKey,BigInt(1),[],spl.TOKEN_PROGRAM_ID)
+            spl.createApproveInstruction(def_ata,dataAccountPDA,provider.wallet.publicKey,BigInt(1),[],spl.TOKEN_PROGRAM_ID)
             ).add(tx);
             
             await program.provider.sendAndConfirm(transaction, []);
@@ -464,12 +464,12 @@ describe("solcbd", () => {
 
         console.log("Balance of USDC ATA before withdraw: ", await program.provider.connection.getTokenAccountBalance(base_ata));
         
-        console.log("Balance of USDC Vault before withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        console.log("Balance of USDC Vault before withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultAccountPDA));
         
-        const tx = await program.methods.withdrawFund(randomID.publicKey,bump_vault3,new anchor.BN(7427)).accounts({
-            projectAccount: vaultPDA,
+        const tx = await program.methods.withdrawFund(randomID.publicKey,vaultAccountPDA_bump,new anchor.BN(7427)).accounts({
+            projectAccount: projectAccountPDA,
             baseAccount : baseinit.publicKey,
-            vaultAccount : vaultPDA3,
+            vaultAccount : vaultAccountPDA,
             baseAta : base_ata,
             user: provider.wallet.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
@@ -479,7 +479,7 @@ describe("solcbd", () => {
         
         console.log("Balance of USDC ATA after withdraw: ", await program.provider.connection.getTokenAccountBalance(base_ata));
         
-        console.log("Balance of USDC Vault after withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultPDA3));
+        console.log("Balance of USDC Vault after withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultAccountPDA));
     });
 
 
@@ -487,18 +487,18 @@ describe("solcbd", () => {
 
         let typeToFund = "0";
 
-        let dt = await program.account.dataAccount.fetch(vaultPDA2);
+        let dt = await program.account.dataAccount.fetch(dataAccountPDA);
         await console.log(dt);
         await console.log(dt.unlocktime.toString(10));
 
         const tx = await program.methods.editReleaseTime(randomID.publicKey,typeToFund,new anchor.BN(1698820339)).accounts({
-            projectAccount: vaultPDA,
-            dataAccount:vaultPDA2,
+            projectAccount: projectAccountPDA,
+            dataAccount:dataAccountPDA,
             user: provider.wallet.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
         }).rpc();
 
-        dt = await program.account.dataAccount.fetch(vaultPDA2);
+        dt = await program.account.dataAccount.fetch(dataAccountPDA);
         await console.log(dt);
         await console.log(dt.unlocktime.toString(10));
 
