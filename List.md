@@ -19,3 +19,23 @@
 * `withdraw_fund( project ID, vault_bump, _amount)` - Project owner can use it to withdraw USDC stored in the project vault
 
 * `edit_release_time( project ID, Type )` - Project owner can use it to change the release Date
+
+# Test List 
+
+1. Make sure initialize is called before calling anything
+2. Initialize project with a new ID
+3. Try Initializing the project with the same ID - should fail
+4. Initialize a project with a different ID - should pass
+5. Whitelist an address
+6. Initialize CBD for a specific type
+7. Try minting CBD from non whitelisted address - should fail
+8. Mint CBD from whitelisted address - should pass
+9. Try minting CBD of a type which is not initialized - shoud fail
+10. Try funding vault without creation of redemption account - should fail
+11. Initialize redeption account for a project
+12. Fund a type of CBD for this project
+13. Try redeeming CBD of type 1 but pass type 2 in argument - should fail
+14. Redeem CBD - check for balances
+15. Try Withdraw USDC funds not as project owner - should fail
+16. Withdraw USDC funds as project owner
+17. Edit release time for specific type of CBD and try withdrawing it - should fail
