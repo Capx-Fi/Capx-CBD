@@ -64,6 +64,15 @@ pub mod solcbd {
         Ok(())
     }
 
+    pub fn whitelist(ctx: Context<WhitelistAddress>,_random: Pubkey,_whiteadr : Pubkey) -> Result<()> {
+        
+        let white_info = &mut ctx.accounts.white_account;
+        white_info.mintcount = 0;
+        white_info.bump = *ctx.bumps.get("white_account").unwrap();
+        
+        Ok(())
+    }
+
     pub fn initialize_cbd(
         ctx: Context<InitializeCBD>,
         _random: Pubkey,
@@ -97,6 +106,10 @@ pub mod solcbd {
         let project_info = &mut ctx.accounts.project_account;
         let data_info = &mut ctx.accounts.data_account;
         let nft_target = &mut ctx.accounts.nft_account;
+
+        let white_info = &mut ctx.accounts.white_account;
+        white_info.mintcount+=1;
+        require!(white_info.mintcount<5, CustomError::MintCountExceed);
 
         nft_target.datatarget = data_info.to_account_info().key();
         nft_target.bump = *ctx.bumps.get("nft_account").unwrap();
@@ -325,6 +338,7 @@ pub enum CustomError {
     CreatorMismatch,
     IndexDoesNotExist,
     NotYetEligible,
+    MintCountExceed
 }
 
 #[derive(Accounts)]
@@ -374,6 +388,33 @@ pub struct InitializeProject<'info> {
     pub usdcmint: Account<'info, Mint>,
 
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey, whiteadr : Pubkey)]
+pub struct WhitelistAddress<'info>{
+
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 8 + 1,
+        seeds = [b"project-whitelist".as_ref(),random.as_ref(),whiteadr.as_ref()], bump
+    )]
+    pub white_account: Box<Account<'info, WhiteAccount>>,
+
+    #[account(mut,
+    constraint = user.key() == project_account.creator
+    )]
+    pub user: Signer<'info>,
+
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
@@ -446,6 +487,12 @@ pub struct MintCBD<'info> {
         seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump=data_account.bump
     )]
     pub data_account: Box<Account<'info, DataAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"project-whitelist".as_ref(),random.as_ref(),user.key().as_ref()], bump=white_account.bump
+    )]
+    pub white_account: Box<Account<'info, WhiteAccount>>,
 
     #[account(
         init,
@@ -714,5 +761,12 @@ pub struct RedemptionAccount {
     token: Pubkey,
     poolusdc: Pubkey,
     pooltoken: Pubkey,
+    bump: u8,
+}
+
+#[account]
+#[derive(Default)]
+pub struct WhiteAccount{
+    mintcount : u64,
     bump: u8,
 }

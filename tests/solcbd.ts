@@ -28,6 +28,7 @@ describe("solcbd", () => {
     let [vaultAccountPDA, vaultAccountPDA_bump] = [null, null];
     let [redemptionAccountPDA, redemptionAccountPDA_bump] = [null, null];
     let [redemptionVaultPDA, redemptionVaultPDA_bump] = [null, null];
+    let [whitelistPDA, whitelistPDA_bump] = [null, null];
     let [nftTarget, nftTarget_bump] = [null, null];
     let randomID;
     let newmint;
@@ -142,6 +143,32 @@ describe("solcbd", () => {
 
     });
 
+    it("Whitelist Address", async() => {
+
+        [whitelistPDA,whitelistPDA_bump] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("project-whitelist"),
+                randomID.publicKey.toBuffer(),
+                provider.wallet.publicKey.toBuffer()
+            ],
+            program.programId
+        );
+
+        const tx = await program.methods.whitelist(
+            randomID.publicKey,
+            provider.wallet.publicKey
+        ).accounts({
+            projectAccount: projectAccountPDA,
+            whiteAccount : whitelistPDA,
+            user: provider.wallet.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId
+        }).rpc();
+
+        let dt = await program.account.whiteAccount.fetch(whitelistPDA);
+        await console.log(dt);
+
+    });
+
     it("Initialize CBD Tag", async () => {
 
         // newmint = anchor.web3.Keypair.generate();
@@ -213,6 +240,7 @@ describe("solcbd", () => {
             baseAta: base_ata,
             vaultAccount: vaultAccountPDA,
             dataAccount: dataAccountPDA,
+            whiteAccount: whitelistPDA,
             nftAccount: nftTarget,
             user: provider.wallet.publicKey,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -242,6 +270,9 @@ describe("solcbd", () => {
         await console.log("NFT PDA data - ",dt3.datatarget.toBase58())
 
         await console.log("Target Acconut which has data and authority - ",dt3.datatarget.toBase58())
+    
+        let dt4 = await program.account.whiteAccount.fetch(whitelistPDA);
+        await console.log(dt4);
     });
 
 
@@ -270,6 +301,7 @@ describe("solcbd", () => {
             baseAta: base_ata,
             vaultAccount: vaultAccountPDA,
             dataAccount: dataAccountPDA,
+            whiteAccount: whitelistPDA,
             nftAccount: nftTarget,
             user: provider.wallet.publicKey,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -299,6 +331,9 @@ describe("solcbd", () => {
         await console.log("NFT PDA data - ",dt3.datatarget.toBase58())
 
         await console.log("Target Acconut which has data and authority - ",dt3.datatarget.toBase58())
+    
+        let dt4 = await program.account.whiteAccount.fetch(whitelistPDA);
+        await console.log(dt4);
     });
 
 
