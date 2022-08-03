@@ -61,6 +61,21 @@ pub mod solcbd {
         project_info.unlocktime = _unlocktime;
         project_info.promisedreturn = _promisedreturn;
         project_info.bump = *ctx.bumps.get("project_account").unwrap();
+        
+        emit!(ProjectInitEvent{
+            projectowner : project_info.creator,
+            projectid : project_info.id,
+            ipfs : project_info.detailsipfs.to_string(),
+            maxsupply : project_info.maxsupply,
+            currentvaluation : project_info.currentvaluation,
+            pricepercbd : project_info.pricepercbd.clone(),
+            numberofcbd : project_info.numberofcbd,
+            totalcbd : project_info.tcbd.clone(),
+            unlocktime : project_info.unlocktime.clone(),
+            promisedreturn : project_info.promisedreturn.clone(),
+            label : "ProjectData".to_string()
+        });
+        
         Ok(())
     }
 
@@ -70,6 +85,12 @@ pub mod solcbd {
         white_info.mintcount = 0;
         white_info.bump = *ctx.bumps.get("white_account").unwrap();
         
+        emit!( WhiteListEvent{
+            projectid : _random,
+            whiteaddress : _whiteadr,
+            label : "Whitelist".to_string()
+        });
+
         Ok(())
     }
 
@@ -769,4 +790,28 @@ pub struct RedemptionAccount {
 pub struct WhiteAccount{
     mintcount : u64,
     bump: u8,
+}
+
+#[event]
+pub struct ProjectInitEvent {
+    pub projectowner: Pubkey,
+    pub projectid: Pubkey,
+    pub ipfs: String,
+    pub maxsupply: u64,
+    pub currentvaluation : u64,
+    pub pricepercbd : Vec<u64>,
+    pub numberofcbd : u64,
+    pub totalcbd : Vec<u64>,
+    pub unlocktime : Vec<u64>,
+    pub promisedreturn : Vec<u64>,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct WhiteListEvent {
+    pub projectid: Pubkey,
+    pub whiteaddress : Pubkey,
+    #[index]
+    pub label: String,
 }
