@@ -40,6 +40,9 @@ describe("solcbd", () => {
     let tokenmint;
     let token_ata;
     let def_ata;
+    const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
+        "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+      );
 
     const provider = anchor.AnchorProvider.local();
 
@@ -241,6 +244,15 @@ describe("solcbd", () => {
             program.programId
         );
 
+        const metadataAddress = (await anchor.web3.PublicKey.findProgramAddress(
+            [
+              Buffer.from("metadata"),
+              TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+              newmint.publicKey.toBuffer(),
+            ],
+            TOKEN_METADATA_PROGRAM_ID
+          ))[0];
+
         def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
         const tx = await program.methods.mintCbd(
             randomID.publicKey,
@@ -249,6 +261,7 @@ describe("solcbd", () => {
         ).accounts({
             baseAccount: baseinit.publicKey,
             projectAccount: projectAccountPDA,
+            projectmetaAccount : projectMetaAccountPDA,
             mint: newmint.publicKey,
             derAta: def_ata,
             baseAta: base_ata,
@@ -257,6 +270,8 @@ describe("solcbd", () => {
             whiteAccount: whitelistPDA,
             nftAccount: nftTarget,
             user: provider.wallet.publicKey,
+            metadata : metadataAddress,
+            tokenMetadataProgram : TOKEN_METADATA_PROGRAM_ID,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: anchor.web3.SystemProgram.programId,
             tokenProgram: spl.TOKEN_PROGRAM_ID
@@ -302,6 +317,15 @@ describe("solcbd", () => {
             program.programId
         );
 
+        const metadataAddress = (await anchor.web3.PublicKey.findProgramAddress(
+            [
+              Buffer.from("metadata"),
+              TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+              newmint.publicKey.toBuffer(),
+            ],
+            TOKEN_METADATA_PROGRAM_ID
+          ))[0];
+
         let def_ata = await spl.getAssociatedTokenAddress(newmint2.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
         const tx = await program.methods.mintCbd(
             randomID.publicKey,
@@ -310,6 +334,7 @@ describe("solcbd", () => {
         ).accounts({
             baseAccount: baseinit.publicKey,
             projectAccount: projectAccountPDA,
+            projectmetaAccount : projectMetaAccountPDA,
             mint: newmint2.publicKey,
             derAta: def_ata,
             baseAta: base_ata,
@@ -318,6 +343,8 @@ describe("solcbd", () => {
             whiteAccount: whitelistPDA,
             nftAccount: nftTarget,
             user: provider.wallet.publicKey,
+            metadata : metadataAddress,
+            tokenMetadataProgram : TOKEN_METADATA_PROGRAM_ID,
             associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: anchor.web3.SystemProgram.programId,
             tokenProgram: spl.TOKEN_PROGRAM_ID

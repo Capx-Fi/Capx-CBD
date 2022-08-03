@@ -1,6 +1,7 @@
 use anchor_lang::{
     prelude::*,
     solana_program::program::invoke,
+    solana_program::program::invoke_signed,
     system_program,
 };
 use anchor_spl::associated_token::AssociatedToken;
@@ -154,6 +155,7 @@ pub mod solcbd {
     ) -> Result<()> {
         let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
         let project_info = &mut ctx.accounts.project_account;
+        let projectmeta_info = &mut ctx.accounts.projectmeta_account;
         let data_info = &mut ctx.accounts.data_account;
         let nft_target = &mut ctx.accounts.nft_account;
 
@@ -203,6 +205,40 @@ pub mod solcbd {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx2 = CpiContext::new_with_signer(cpi_program, cpi_accounts, outer.as_slice());
         token::mint_to(cpi_ctx2, 1)?;
+
+        // Creating Metadata metaplex account
+        // invoke_signed(
+        //     &token_instruction::create_metadata_accounts_v2(
+        //         TOKEN_METADATA_ID, 
+        //         ctx.accounts.metadata.key(), 
+        //         ctx.accounts.mint.key(), 
+        //         ctx.accounts.data_account.key(), 
+        //         ctx.accounts.user.key(), 
+        //         ctx.accounts.data_account.key(), 
+        //         projectmeta_info.name.clone(), 
+        //         projectmeta_info.symbol.clone(), 
+        //         projectmeta_info.detailsipfs[_type_dm as usize].clone(), 
+        //         None,
+        //         1,
+        //         true, 
+        //         false, 
+        //         None, 
+        //         None,
+        //     ),
+        //     &[
+        //         ctx.accounts.data_account.to_account_info(),
+        //         ctx.accounts.metadata.to_account_info(),
+        //         ctx.accounts.mint.to_account_info(),
+        //         ctx.accounts.der_ata.to_account_info(),
+        //         ctx.accounts.user.to_account_info(),
+        //         ctx.accounts.rent.to_account_info(),
+        //     ],&[&[
+        //         b"nft-data".as_ref(),
+        //         _random.as_ref(),
+        //         _type.as_ref(),
+        //         bump_vector.as_ref(),
+        //     ]],
+        // )?;
 
         emit!(MintCbdEvent{
             projectid : _random,
@@ -554,6 +590,12 @@ pub struct MintCBD<'info> {
         seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
     )]
     pub project_account: Box<Account<'info, ProjectAccount>>,
+    
+    #[account(
+        mut,
+        seeds = [b"project-metadata".as_ref(),random.as_ref()], bump=projectmeta_account.bump
+    )]
+    pub projectmeta_account: Box<Account<'info, ProjectMetaAccount>>,
 
     #[account(mut)]
     pub base_account: Box<Account<'info, InitAccount>>,
@@ -598,6 +640,13 @@ pub struct MintCBD<'info> {
         seeds = [b"nft-data-target".as_ref(),mint.key().as_ref()], bump
     )]
     pub nft_account: Box<Account<'info, NftAccount>>,
+
+    /// CHECK: We're about to create this with Metaplex
+    #[account(mut)]
+    pub metadata: UncheckedAccount<'info>,
+
+    /// CHECK: Metaplex will check this
+    pub token_metadata_program: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub user: Signer<'info>,
