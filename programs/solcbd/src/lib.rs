@@ -114,6 +114,12 @@ pub mod solcbd {
         data_info.price = project_info.pricepercbd[_type_dm as usize];
         data_info.bump = *ctx.bumps.get("data_account").unwrap();
 
+        emit!(InitCbdEvent{
+            projectid : _random,
+            typeofcbd : _type,
+            label : "InitializeCBD".to_string()
+        });
+
         Ok(())
     }
 
@@ -173,6 +179,13 @@ pub mod solcbd {
         let cpi_ctx2 = CpiContext::new_with_signer(cpi_program, cpi_accounts, outer.as_slice());
         token::mint_to(cpi_ctx2, 1)?;
 
+        emit!(MintCbdEvent{
+            projectid : _random,
+            typeofcbd : _type,
+            nftkey : ctx.accounts.mint.key(),
+            label : "MintCBD".to_string()
+        });
+
         Ok(())
     }
 
@@ -201,6 +214,14 @@ pub mod solcbd {
         // let price_per_token =
         //     (usdc_bal * (base10.pow(ctx.accounts.usdcmint.decimals as u32))) / token_bal;
 
+        emit!(InitializeRedemptionEvent{
+            projectid : _random,
+            token : redemption_info.token,
+            poolusdc : redemption_info.poolusdc,
+            pooltoken : redemption_info.pooltoken,
+            label : "InitRedemption".to_string()
+        });
+
         Ok(())
     }
 
@@ -211,7 +232,7 @@ pub mod solcbd {
         _amount: u64,
     ) -> Result<()> {
         let project_info = &mut ctx.accounts.project_account;
-        let redemption_info = &mut ctx.accounts.redemption_account;
+        
         require!(
             ctx.accounts.user.to_account_info().key() == project_info.creator,
             CustomError::CreatorMismatch
@@ -238,6 +259,13 @@ pub mod solcbd {
 
         anchor_spl::token::transfer(cpi_ctx, _amount)?;
 
+        emit!(FundVaultEvent{
+            projectid : _random,
+            typeofcbd : _type,
+            amount : _amount,
+            label : "FundVault".to_string()
+        });
+
         Ok(())
     }
 
@@ -248,12 +276,8 @@ pub mod solcbd {
         _vault_bump: u8,
     ) -> Result<()> {
         let project_info = &mut ctx.accounts.project_account;
-        let redemption_info = &mut ctx.accounts.redemption_account;
         let data_info = &mut ctx.accounts.data_account;
-        let der_ata = &mut ctx.accounts.der_ata;
-        let nft_mint = &mut ctx.accounts.mint;
-        let user = &mut ctx.accounts.user;
-
+        
 
         let now_ts = Clock::get().unwrap().unix_timestamp as u64;
 
@@ -312,6 +336,13 @@ pub mod solcbd {
         );
         anchor_spl::token::transfer(cpi_ctx_trans, token_amt)?;
 
+        emit!(RedeemCbdEvent{
+            projectid : _random,
+            typeofcbd : _type,
+            nftkey : ctx.accounts.mint.key(),
+            label : "RedeemCBD".to_string()
+        });
+
         Ok(())
     }
 
@@ -336,6 +367,11 @@ pub mod solcbd {
         );
         anchor_spl::token::transfer(cpi_ctx_trans, _amount)?;
 
+        emit!(WithdrawEvent{
+            projectid : _random,
+            amount : _amount,
+            label : "WithdrawFund".to_string()
+        });
         
         Ok(())
     }
@@ -344,6 +380,13 @@ pub mod solcbd {
         
         let data_info = &mut ctx.accounts.data_account;
         data_info.unlocktime = _new_time;
+
+        emit!(EditReleaseTimeEvent{
+            projectid : _random,
+            typeofcbd : _type,
+            newtime : _new_time,
+            label : "EditReleaseTime".to_string()
+        });
 
         Ok(())
     }
@@ -812,6 +855,68 @@ pub struct ProjectInitEvent {
 pub struct WhiteListEvent {
     pub projectid: Pubkey,
     pub whiteaddress : Pubkey,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct InitCbdEvent {
+    pub projectid: Pubkey,
+    pub typeofcbd : String,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct MintCbdEvent {
+    pub projectid: Pubkey,
+    pub typeofcbd : String,
+    pub nftkey : Pubkey,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct InitializeRedemptionEvent {
+    pub projectid: Pubkey,
+    pub token : Pubkey,
+    pub poolusdc : Pubkey,
+    pub pooltoken : Pubkey,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct FundVaultEvent {
+    pub projectid: Pubkey,
+    pub typeofcbd : String,
+    pub amount : u64,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct RedeemCbdEvent {
+    pub projectid: Pubkey,
+    pub typeofcbd : String,
+    pub nftkey : Pubkey,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct WithdrawEvent {
+    pub projectid: Pubkey,
+    pub amount : u64,
+    #[index]
+    pub label: String,
+}
+
+#[event]
+pub struct EditReleaseTimeEvent {
+    pub projectid: Pubkey,
+    pub typeofcbd : String,
+    pub newtime : u64,
     #[index]
     pub label: String,
 }
