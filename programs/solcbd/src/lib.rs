@@ -1,6 +1,14 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    solana_program::program::invoke,
+    system_program,
+};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount};
+use mpl_token_metadata::{
+    ID as TOKEN_METADATA_ID,
+    instruction as token_instruction,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -18,7 +26,9 @@ pub mod solcbd {
     pub fn initialize_project(
         ctx: Context<InitializeProject>,
         _random: Pubkey,
-        _ipfs: String,
+        _name : String,
+        _symbol : String,
+        _ipfs: Vec<String>,
         _maxsupply: u64,
         _currentvaluation: u64,
         _pricepercbd: Vec<u64>,
@@ -29,7 +39,10 @@ pub mod solcbd {
     ) -> Result<()> {
         let now_ts = Clock::get().unwrap().unix_timestamp as u64;
         require!(
-            _tcbd.len() == _unlocktime.len() && _unlocktime.len() == _promisedreturn.len(),
+            _tcbd.len() == _unlocktime.len() 
+            && _unlocktime.len() == _promisedreturn.len() 
+            && _promisedreturn.len()==_ipfs.len()
+            && _ipfs.len()==_pricepercbd.len(),
             CustomError::LengthMismatch
         );
 
@@ -49,9 +62,14 @@ pub mod solcbd {
         );
 
         let project_info = &mut ctx.accounts.project_account;
+        let projectmeta_info = &mut ctx.accounts.projectmeta_account;
         project_info.creator = ctx.accounts.user.to_account_info().key();
         project_info.id = _random;
-        project_info.detailsipfs = _ipfs;
+        projectmeta_info.creator = ctx.accounts.user.to_account_info().key();
+        projectmeta_info.id = _random;
+        projectmeta_info.name = _name;
+        projectmeta_info.symbol = _symbol;
+        projectmeta_info.detailsipfs = _ipfs;
         project_info.maxsupply = _maxsupply;
         project_info.currentvaluation = _currentvaluation;
         project_info.pricepercbd = _pricepercbd;
@@ -61,11 +79,14 @@ pub mod solcbd {
         project_info.unlocktime = _unlocktime;
         project_info.promisedreturn = _promisedreturn;
         project_info.bump = *ctx.bumps.get("project_account").unwrap();
+        projectmeta_info.bump = *ctx.bumps.get("projectmeta_account").unwrap();
         
         emit!(ProjectInitEvent{
             projectowner : project_info.creator,
             projectid : project_info.id,
-            ipfs : project_info.detailsipfs.to_string(),
+            name : projectmeta_info.name.clone(),
+            symbol : projectmeta_info.symbol.clone(),
+            ipfs : projectmeta_info.detailsipfs.clone(),
             maxsupply : project_info.maxsupply,
             currentvaluation : project_info.currentvaluation,
             pricepercbd : project_info.pricepercbd.clone(),
@@ -431,10 +452,18 @@ pub struct InitializeProject<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 32 + 32 + (4 + 46) + 8 + 8 + 8 + (5 * (4 + (8*20))) + 1,
+        space = 8 + 32 + 32 + 8 + 8 + 8 + (5 * (4 + (15*8))) + 1,
         seeds = [b"project-data".as_ref(),random.as_ref()], bump
     )]
     pub project_account: Box<Account<'info, ProjectAccount>>,
+    
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 32 + 32 + (4+12) + (4+5) + (4 + (15*(4+46))) + 1,
+        seeds = [b"project-metadata".as_ref(),random.as_ref()], bump
+    )]
+    pub projectmeta_account: Box<Account<'info, ProjectMetaAccount>>,
 
     #[account(mut)]
     pub base_account: Box<Account<'info, InitAccount>>,
@@ -786,7 +815,6 @@ pub struct EditReleaseTime<'info> {
 pub struct ProjectAccount {
     creator: Pubkey,
     id: Pubkey,
-    detailsipfs: String,
     maxsupply: u64,
     currentvaluation: u64,
     numberofcbd: u64,
@@ -795,6 +823,17 @@ pub struct ProjectAccount {
     rcbd: Vec<u64>,
     unlocktime: Vec<u64>,
     promisedreturn: Vec<u64>,
+    bump: u8,
+}
+
+#[account]
+#[derive(Default)]
+pub struct ProjectMetaAccount {
+    creator: Pubkey,
+    id: Pubkey,
+    name : String,
+    symbol : String,
+    detailsipfs: Vec<String>,
     bump: u8,
 }
 
@@ -843,7 +882,9 @@ pub struct WhiteAccount{
 pub struct ProjectInitEvent {
     pub projectowner: Pubkey,
     pub projectid: Pubkey,
-    pub ipfs: String,
+    pub name : String,
+    pub symbol : String,
+    pub ipfs: Vec<String>,
     pub maxsupply: u64,
     pub currentvaluation : u64,
     pub pricepercbd : Vec<u64>,

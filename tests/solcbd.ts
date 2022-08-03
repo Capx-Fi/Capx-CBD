@@ -24,6 +24,7 @@ describe("solcbd", () => {
     const program = anchor.workspace.Solcbd as Program < Solcbd > ;
 
     let [projectAccountPDA, projectAccountPDA_bump] = [null, null];
+    let [projectMetaAccountPDA, projectMetaAccountPDA_bump] = [null, null];
     let [dataAccountPDA, dataAccountPDA_bump] = [null, null];
     let [vaultAccountPDA, vaultAccountPDA_bump] = [null, null];
     let [redemptionAccountPDA, redemptionAccountPDA_bump] = [null, null];
@@ -107,6 +108,13 @@ describe("solcbd", () => {
             ],
             program.programId
         );
+        [projectMetaAccountPDA, projectMetaAccountPDA_bump] = await PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("project-metadata"),
+                randomID.publicKey.toBuffer()
+            ],
+            program.programId
+        );
 
         [vaultAccountPDA, vaultAccountPDA_bump] = await PublicKey.findProgramAddress(
             [
@@ -119,7 +127,9 @@ describe("solcbd", () => {
 
         const tx = await program.methods.initializeProject(
             randomID.publicKey,
-            "QmUfo11awv8Aa9ppnL4WhqJ7KMqrG4vdCWnAozrLzs9FNa",
+            "Name",
+            "SMB",
+            ["QmUfo11awv8Aa9ppnL4WhqJ7KMqrG4vdCWnAozrLzs9FNa"],
             new anchor.BN(3000),
             new anchor.BN(4000),
             [new anchor.BN(5000)],
@@ -130,6 +140,7 @@ describe("solcbd", () => {
         ).accounts({
             baseAccount: baseinit.publicKey,
             projectAccount: projectAccountPDA,
+            projectmetaAccount : projectMetaAccountPDA,
             vaultAccount: vaultAccountPDA,
             usdcmint: usdcmint.publicKey,
             tokenProgram: spl.TOKEN_PROGRAM_ID,
@@ -140,6 +151,9 @@ describe("solcbd", () => {
 
         let dt = await program.account.projectAccount.fetch(projectAccountPDA);
         await console.log(dt)
+
+        let dt2 = await program.account.projectMetaAccount.fetch(projectMetaAccountPDA);
+        await console.log(dt2)
 
     });
 
