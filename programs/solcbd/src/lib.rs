@@ -81,8 +81,10 @@ pub mod solcbd {
 
     pub fn whitelist(ctx: Context<WhitelistAddress>,_random: Pubkey,_whiteadr : Pubkey) -> Result<()> {
         
+
+        let project_info = &mut ctx.accounts.project_account;
         let white_info = &mut ctx.accounts.white_account;
-        white_info.mintcount = 0;
+        white_info.mintcount = vec![0; project_info.tcbd.len()];
         white_info.bump = *ctx.bumps.get("white_account").unwrap();
         
         emit!( WhiteListEvent{
@@ -135,8 +137,10 @@ pub mod solcbd {
         let nft_target = &mut ctx.accounts.nft_account;
 
         let white_info = &mut ctx.accounts.white_account;
-        white_info.mintcount+=1;
-        require!(white_info.mintcount<5, CustomError::MintCountExceed);
+
+        
+        white_info.mintcount[_type_dm as usize]+=1;
+        require!(white_info.mintcount[_type_dm as usize]<5, CustomError::MintCountExceed);
 
         nft_target.datatarget = data_info.to_account_info().key();
         nft_target.bump = *ctx.bumps.get("nft_account").unwrap();
@@ -469,7 +473,7 @@ pub struct WhitelistAddress<'info>{
     #[account(
         init,
         payer = user,
-        space = 8 + 8 + 1,
+        space = 8 + (4 + (20*8)) + 1,
         seeds = [b"project-whitelist".as_ref(),random.as_ref(),whiteadr.as_ref()], bump
     )]
     pub white_account: Box<Account<'info, WhiteAccount>>,
@@ -831,7 +835,7 @@ pub struct RedemptionAccount {
 #[account]
 #[derive(Default)]
 pub struct WhiteAccount{
-    mintcount : u64,
+    mintcount : Vec<u64>,
     bump: u8,
 }
 
