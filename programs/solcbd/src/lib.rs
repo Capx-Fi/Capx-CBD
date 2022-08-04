@@ -223,23 +223,23 @@ pub mod solcbd {
             // for create_metadata_accounts_v3, add:     None, // collection_details
         );
 
-        invoke_signed(
-            &ix,
-            &[
-                ctx.accounts.token_metadata_program.to_account_info().clone(), // Metadata program id
-                ctx.accounts.metadata.to_account_info().clone(), // Metadata account
-                ctx.accounts.mint.to_account_info().clone(), // Mint
-                data_info.to_account_info().clone(), // Mint Authority
-                ctx.accounts.user.to_account_info().clone(), // Payer
-                data_info.to_account_info().to_account_info().clone(), // Update Authority
-                ctx.accounts.system_program.to_account_info().clone(), // System Program
-                ctx.accounts.rent.to_account_info().clone(), // Rent Sysvar
-            ],
-            &[
+        // invoke_signed(
+        //     &ix,
+        //     &[
+        //         ctx.accounts.token_metadata_program.to_account_info().clone(), // Metadata program id
+        //         ctx.accounts.metadata.to_account_info().clone(), // Metadata account
+        //         ctx.accounts.mint.to_account_info().clone(), // Mint
+        //         data_info.to_account_info().clone(), // Mint Authority
+        //         ctx.accounts.user.to_account_info().clone(), // Payer
+        //         data_info.to_account_info().to_account_info().clone(), // Update Authority
+        //         ctx.accounts.system_program.to_account_info().clone(), // System Program
+        //         ctx.accounts.rent.to_account_info().clone(), // Rent Sysvar
+        //     ],
+        //     &[
                 
-                &[b"nft-data".as_ref(),_random.as_ref(),_type.as_ref(), &[data_info.bump]],
-            ],
-        )?;
+        //         &[b"nft-data".as_ref(),_random.as_ref(),_type.as_ref(), &[data_info.bump]],
+        //     ],
+        // )?;
 
         emit!(MintCbdEvent{
             projectid : _random,
@@ -250,6 +250,103 @@ pub mod solcbd {
 
         Ok(())
     }
+
+    pub fn mint_cbd_creator(
+        ctx: Context<MintCBDByCreator>,
+        _random: Pubkey,
+        _type: String,
+        _target_user : Pubkey
+    ) -> Result<()> {
+        let _type_dm = (_type.parse::<u64>()).expect("Mismatch Panic");
+        let project_info = &mut ctx.accounts.project_account;
+        let projectmeta_info = &mut ctx.accounts.projectmeta_account;
+        let data_info = &mut ctx.accounts.data_account;
+        let nft_target = &mut ctx.accounts.nft_account;
+
+        let white_info = &mut ctx.accounts.white_account;
+
+        
+        white_info.mintcount[_type_dm as usize]+=1;
+        require!(white_info.mintcount[_type_dm as usize]<5, CustomError::MintCountExceed);
+
+        nft_target.datatarget = data_info.to_account_info().key();
+        nft_target.bump = *ctx.bumps.get("nft_account").unwrap();
+
+        
+
+        require!(
+            project_info.rcbd[_type_dm as usize] > 0,
+            CustomError::MintsExausted
+        );
+        project_info.rcbd[_type_dm as usize] -= 1;
+
+        let _bump = data_info.bump;
+
+        let bump_vector = _bump.to_le_bytes();
+        let inner = vec![
+            b"nft-data".as_ref(),
+            _random.as_ref(),
+            _type.as_ref(),
+            bump_vector.as_ref(),
+        ];
+        let outer = vec![inner.as_slice()];
+
+        let cpi_accounts = MintTo {
+            mint: ctx.accounts.mint.to_account_info(),
+            to: ctx.accounts.der_ata.to_account_info(),
+            authority: data_info.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx2 = CpiContext::new_with_signer(cpi_program, cpi_accounts, outer.as_slice());
+        token::mint_to(cpi_ctx2, 1)?;
+
+        let ix = token_instruction::create_metadata_accounts_v2(
+            TOKEN_METADATA_ID, // program_id,
+            ctx.accounts.metadata.key(), // metadata_account,
+            *ctx.accounts.mint.to_account_info().key, //mint,
+            data_info.to_account_info().key(), //mint_authority,
+            *ctx.accounts.user.to_account_info().key, //payer,
+            data_info.to_account_info().key(), //update_authority,
+            projectmeta_info.name.clone(), 
+            projectmeta_info.symbol.clone(), 
+            projectmeta_info.detailsipfs[_type_dm as usize].clone(), 
+            None, // creators,
+            0u16, //seller_fee_basis_points,
+            true, // update_authority_is_signer,
+            true, // is_mutable,
+            None, // collection,
+            None, // uses,
+            // for create_metadata_accounts_v3, add:     None, // collection_details
+        );
+
+        // invoke_signed(
+        //     &ix,
+        //     &[
+        //         ctx.accounts.token_metadata_program.to_account_info().clone(), // Metadata program id
+        //         ctx.accounts.metadata.to_account_info().clone(), // Metadata account
+        //         ctx.accounts.mint.to_account_info().clone(), // Mint
+        //         data_info.to_account_info().clone(), // Mint Authority
+        //         ctx.accounts.user.to_account_info().clone(), // Payer
+        //         data_info.to_account_info().to_account_info().clone(), // Update Authority
+        //         ctx.accounts.system_program.to_account_info().clone(), // System Program
+        //         ctx.accounts.rent.to_account_info().clone(), // Rent Sysvar
+        //     ],
+        //     &[
+                
+        //         &[b"nft-data".as_ref(),_random.as_ref(),_type.as_ref(), &[data_info.bump]],
+        //     ],
+        // )?;
+
+        emit!(MintCbdEvent{
+            projectid : _random,
+            typeofcbd : _type,
+            nftkey : ctx.accounts.mint.key(),
+            label : "MintCBD".to_string()
+        });
+
+        Ok(())
+    }
+
 
     pub fn initialize_redemption(
         ctx: Context<InitializeRedemption>,
@@ -650,6 +747,79 @@ pub struct MintCBD<'info> {
     pub token_metadata_program: UncheckedAccount<'info>,
 
     #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(random : Pubkey,_type : String,_targer_adr : Pubkey)]
+pub struct MintCBDByCreator<'info> {
+    #[account(
+        mut,
+        seeds = [b"project-data".as_ref(),random.as_ref()], bump=project_account.bump
+    )]
+    pub project_account: Box<Account<'info, ProjectAccount>>,
+    
+    #[account(
+        mut,
+        seeds = [b"project-metadata".as_ref(),random.as_ref()], bump=projectmeta_account.bump
+    )]
+    pub projectmeta_account: Box<Account<'info, ProjectMetaAccount>>,
+
+    #[account(mut)]
+    pub base_account: Box<Account<'info, InitAccount>>,
+
+    /// CHECK: We're about to create this with Metaplex
+    #[account(mut,
+        constraint = target_user.key() == _targer_adr
+    )]
+    pub target_user: UncheckedAccount<'info>,
+
+    #[account(
+        init,
+        payer = user,
+        mint::decimals = 0,
+        mint::authority = data_account,
+    )]
+    pub mint: Box<Account<'info, Mint>>,
+
+    #[account(init, payer = user, associated_token::mint = mint, associated_token::authority = target_user)]
+    pub der_ata: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"nft-data".as_ref(),random.as_ref(),_type.as_ref()], bump=data_account.bump
+    )]
+    pub data_account: Box<Account<'info, DataAccount>>,
+
+    #[account(
+        mut,
+        seeds = [b"project-whitelist".as_ref(),random.as_ref(),_targer_adr.as_ref()], bump=white_account.bump
+    )]
+    pub white_account: Box<Account<'info, WhiteAccount>>,
+
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 32 + 1,
+        seeds = [b"nft-data-target".as_ref(),mint.key().as_ref()], bump
+    )]
+    pub nft_account: Box<Account<'info, NftAccount>>,
+
+    /// CHECK: We're about to create this with Metaplex
+    #[account(mut)]
+    pub metadata: UncheckedAccount<'info>,
+
+    /// CHECK: Metaplex will check this
+    pub token_metadata_program: UncheckedAccount<'info>,
+
+    #[account(mut,
+        constraint = user.key() == project_account.creator
+    )]
     pub user: Signer<'info>,
 
     pub associated_token_program: Program<'info, AssociatedToken>,

@@ -7,7 +7,7 @@ solcbd = "9ULGJGMCU3AapbNuCfV4aryAV5w5NYdAaJxSgvjMw21Y"
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "http://127.0.0.1:8899"
 wallet = "/Users/madhurdixit/.config/solana/id.json"
 
 [scripts]

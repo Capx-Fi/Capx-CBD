@@ -330,18 +330,17 @@ describe("solcbd", () => {
           ))[0];
 
         let def_ata = await spl.getAssociatedTokenAddress(newmint2.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
-        const tx = await program.methods.mintCbd(
+        const tx = await program.methods.mintCbdCreator(
             randomID.publicKey,
             "0",
-            vaultAccountPDA_bump
+            provider.wallet.publicKey
         ).accounts({
             baseAccount: baseinit.publicKey,
             projectAccount: projectAccountPDA,
             projectmetaAccount : projectMetaAccountPDA,
             mint: newmint2.publicKey,
             derAta: def_ata,
-            baseAta: base_ata,
-            vaultAccount: vaultAccountPDA,
+            targetUser : provider.wallet.publicKey,
             dataAccount: dataAccountPDA,
             whiteAccount: whitelistPDA,
             nftAccount: nftTarget,
@@ -545,7 +544,7 @@ describe("solcbd", () => {
         
         console.log("Balance of USDC Vault before withdraw: ", await program.provider.connection.getTokenAccountBalance(vaultAccountPDA));
         
-        const tx = await program.methods.withdrawFund(randomID.publicKey,vaultAccountPDA_bump,new anchor.BN(7427)).accounts({
+        const tx = await program.methods.withdrawFund(randomID.publicKey,vaultAccountPDA_bump,new anchor.BN(4427)).accounts({
             projectAccount: projectAccountPDA,
             baseAccount : baseinit.publicKey,
             vaultAccount : vaultAccountPDA,
