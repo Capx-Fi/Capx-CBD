@@ -11,7 +11,7 @@ use mpl_token_metadata::{
     instruction as token_instruction,
 };
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("9ULGJGMCU3AapbNuCfV4aryAV5w5NYdAaJxSgvjMw21Y");
 
 #[program]
 pub mod solcbd {
@@ -205,6 +205,43 @@ pub mod solcbd {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx2 = CpiContext::new_with_signer(cpi_program, cpi_accounts, outer.as_slice());
         token::mint_to(cpi_ctx2, 1)?;
+
+        let ix = token_instruction::create_metadata_accounts_v2(
+            TOKEN_METADATA_ID, // program_id,
+            ctx.accounts.metadata.key(), // metadata_account,
+            *ctx.accounts.mint.to_account_info().key, //mint,
+            data_info.to_account_info().key(), //mint_authority,
+            *ctx.accounts.user.to_account_info().key, //payer,
+            data_info.to_account_info().key(), //update_authority,
+            projectmeta_info.name.clone(), 
+            projectmeta_info.symbol.clone(), 
+            projectmeta_info.detailsipfs[_type_dm as usize].clone(), 
+            None, // creators,
+            0u16, //seller_fee_basis_points,
+            true, // update_authority_is_signer,
+            true, // is_mutable,
+            None, // collection,
+            None, // uses,
+            // for create_metadata_accounts_v3, add:     None, // collection_details
+        );
+
+        invoke_signed(
+            &ix,
+            &[
+                ctx.accounts.token_metadata_program.to_account_info().clone(), // Metadata program id
+                ctx.accounts.metadata.to_account_info().clone(), // Metadata account
+                ctx.accounts.mint.to_account_info().clone(), // Mint
+                data_info.to_account_info().clone(), // Mint Authority
+                ctx.accounts.user.to_account_info().clone(), // Payer
+                data_info.to_account_info().to_account_info().clone(), // Update Authority
+                ctx.accounts.system_program.to_account_info().clone(), // System Program
+                ctx.accounts.rent.to_account_info().clone(), // Rent Sysvar
+            ],
+            &[
+                
+                &[b"nft-data".as_ref(),_random.as_ref(),_type.as_ref(), &[data_info.bump]],
+            ],
+        )?;
 
         // Creating Metadata metaplex account
         // invoke_signed(

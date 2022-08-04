@@ -5,8 +5,10 @@ import {
 import {
     Solcbd
 } from "../target/types/solcbd";
+import { findMetadataPda } from "@metaplex-foundation/js";
 
 import * as spl from "@solana/spl-token";
+import { getMint } from "@solana/spl-token";
 
 const {
     Connection,
@@ -130,9 +132,9 @@ describe("solcbd", () => {
 
         const tx = await program.methods.initializeProject(
             randomID.publicKey,
-            "Name",
-            "SMB",
-            ["QmUfo11awv8Aa9ppnL4WhqJ7KMqrG4vdCWnAozrLzs9FNa"],
+            "CTRL - Program Controlled Token",
+            "CTRL",
+            ["https://bernieblume.github.io/Ctrl/Ctrl.json"],
             new anchor.BN(3000),
             new anchor.BN(4000),
             [new anchor.BN(5000)],
@@ -244,14 +246,9 @@ describe("solcbd", () => {
             program.programId
         );
 
-        const metadataAddress = (await anchor.web3.PublicKey.findProgramAddress(
-            [
-              Buffer.from("metadata"),
-              TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-              newmint.publicKey.toBuffer(),
-            ],
-            TOKEN_METADATA_PROGRAM_ID
-          ))[0];
+        const metadataAddress = await findMetadataPda(newmint.publicKey);
+
+        
 
         def_ata = await spl.getAssociatedTokenAddress(newmint.publicKey, provider.wallet.publicKey, false, spl.TOKEN_PROGRAM_ID, spl.ASSOCIATED_TOKEN_PROGRAM_ID);
         const tx = await program.methods.mintCbd(
@@ -302,6 +299,12 @@ describe("solcbd", () => {
     
         let dt4 = await program.account.whiteAccount.fetch(whitelistPDA);
         await console.log(dt4);
+        
+        let mintInfo = await getMint(program.provider.connection,newmint.publicKey);
+        await console.log(mintInfo);
+        
+
+
     });
 
 
@@ -321,7 +324,7 @@ describe("solcbd", () => {
             [
               Buffer.from("metadata"),
               TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-              newmint.publicKey.toBuffer(),
+              newmint2.publicKey.toBuffer(),
             ],
             TOKEN_METADATA_PROGRAM_ID
           ))[0];
