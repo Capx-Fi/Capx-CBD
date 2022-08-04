@@ -1,8 +1,6 @@
 use anchor_lang::{
     prelude::*,
-    solana_program::program::invoke,
     solana_program::program::invoke_signed,
-    system_program,
 };
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount};
@@ -242,40 +240,6 @@ pub mod solcbd {
                 &[b"nft-data".as_ref(),_random.as_ref(),_type.as_ref(), &[data_info.bump]],
             ],
         )?;
-
-        // Creating Metadata metaplex account
-        // invoke_signed(
-        //     &token_instruction::create_metadata_accounts_v2(
-        //         TOKEN_METADATA_ID, 
-        //         ctx.accounts.metadata.key(), 
-        //         ctx.accounts.mint.key(), 
-        //         ctx.accounts.data_account.key(), 
-        //         ctx.accounts.user.key(), 
-        //         ctx.accounts.data_account.key(), 
-        //         projectmeta_info.name.clone(), 
-        //         projectmeta_info.symbol.clone(), 
-        //         projectmeta_info.detailsipfs[_type_dm as usize].clone(), 
-        //         None,
-        //         1,
-        //         true, 
-        //         false, 
-        //         None, 
-        //         None,
-        //     ),
-        //     &[
-        //         ctx.accounts.data_account.to_account_info(),
-        //         ctx.accounts.metadata.to_account_info(),
-        //         ctx.accounts.mint.to_account_info(),
-        //         ctx.accounts.der_ata.to_account_info(),
-        //         ctx.accounts.user.to_account_info(),
-        //         ctx.accounts.rent.to_account_info(),
-        //     ],&[&[
-        //         b"nft-data".as_ref(),
-        //         _random.as_ref(),
-        //         _type.as_ref(),
-        //         bump_vector.as_ref(),
-        //     ]],
-        // )?;
 
         emit!(MintCbdEvent{
             projectid : _random,
