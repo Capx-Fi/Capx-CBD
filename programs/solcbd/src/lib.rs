@@ -586,7 +586,8 @@ pub struct InitializeProject<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 32 + 32 + 8 + 8 + 8 + (5 * (4 + (15*8))) + 1,
+        space = 10240,
+        // space = 8 + 32 + 32 + 8 + 8 + 8 + (5 * (4 + (15*8))) + 1,
         seeds = [b"project-data".as_ref(),random.as_ref()], bump
     )]
     pub project_account: Box<Account<'info, ProjectAccount>>,
@@ -594,7 +595,8 @@ pub struct InitializeProject<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 32 + 32 + (4+12) + (4+5) + (4 + (15*(4+46))) + 1,
+        space = 10240,
+        // space = 8 + 32 + 32 + (4+12) + (4+5) + (4 + (15*(4+46))) + 1,
         seeds = [b"project-metadata".as_ref(),random.as_ref()], bump
     )]
     pub projectmeta_account: Box<Account<'info, ProjectMetaAccount>>,
